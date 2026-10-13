@@ -5,7 +5,9 @@
   "type": "module",
   "scripts": {
     "test": "node --import tsx --test tests/**/*.test.ts",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "build": "tsc -p tsconfig.build.json",
+    "cli": "tsx src/bootstrap/main.ts"
   },
   "engines": {
     "node": ">=24 <25"
