@@ -19,6 +19,11 @@ const token = (value: string, quoted = false): ArgumentToken => Object.freeze({ 
 const line = (name: string, ...args: (string | ArgumentToken)[]): ParsedCommandLine => Object.freeze({
   name, args: Object.freeze(args.map(arg => typeof arg === 'string' ? token(arg) : arg)),
 });
+function ordinary(factory: CommandFactory, input: ParsedCommandLine) {
+  const command = factory.create(input);
+  assert.ok(!(command instanceof HistoryControlCommand));
+  return command;
+}
 function setup(initialized = true) {
   const tree = new ShapeTree(); const editor = new ShapeEditorReceiver(tree, new ShapeFactory()); const query = new QueryReceiver(tree);
   const files: FileGateway = { async read() { return '<svg width="10" height="20"/>'; }, async write() {} };
@@ -47,47 +52,47 @@ for (const [input, category] of cases) test(`factory classifies ${input.name} ${
 
 test('init accepts zero, one or two dimensions; canvas accepts zero or two', async () => {
   const f = setup(false);
-  await f.factory.create(line('init')).execute(); assert.deepEqual(f.tree.canvasSize, { width: 800, height: 600 });
-  await f.factory.create(line('init', '100')).execute(); assert.deepEqual(f.tree.canvasSize, { width: 100, height: 600 });
-  await f.factory.create(line('init', '200', '300')).execute(); assert.deepEqual(f.tree.canvasSize, { width: 200, height: 300 });
-  await f.factory.create(line('canvas', '400', '500')).execute(); assert.deepEqual(f.tree.canvasSize, { width: 400, height: 500 });
-  assert.deepEqual(await f.factory.create(line('canvas')).execute(), f.query.showCanvas());
+  await ordinary(f.factory, line('init')).execute(); assert.deepEqual(f.tree.canvasSize, { width: 800, height: 600 });
+  await ordinary(f.factory, line('init', '100')).execute(); assert.deepEqual(f.tree.canvasSize, { width: 100, height: 600 });
+  await ordinary(f.factory, line('init', '200', '300')).execute(); assert.deepEqual(f.tree.canvasSize, { width: 200, height: 300 });
+  await ordinary(f.factory, line('canvas', '400', '500')).execute(); assert.deepEqual(f.tree.canvasSize, { width: 400, height: 500 });
+  assert.deepEqual(await ordinary(f.factory, line('canvas')).execute(), f.query.showCanvas());
 });
 
 test('factory binds receivers and converts finite move/scale parameters', async () => {
   const f = setup();
-  await f.factory.create(line('move', 'r', '-0.5', '2e1')).execute(); assert.equal(f.tree.findShape('r').getAttribute('x'), '0.5');
-  await f.factory.create(line('scale', 'r', '2')).execute(); assert.equal(f.tree.findShape('r').getAttribute('height'), '8');
-  await f.factory.create(line('set', 'r', 'width', '9')).execute(); assert.equal(f.tree.findShape('r').getAttribute('width'), '9');
-  await f.factory.create(line('addto', 'p', 'r')).execute(); assert.equal(f.tree.findShape('r').parent, f.tree.findShape('p'));
-  assert.deepEqual(await f.factory.create(line('show', 'r')).execute(), f.query.show('r'));
-  await f.factory.create(line('save', 'out.svg')).execute(); assert.equal(f.document.associatedPath, 'out.svg');
+  await ordinary(f.factory, line('move', 'r', '-0.5', '2e1')).execute(); assert.equal(f.tree.findShape('r').getAttribute('x'), '0.5');
+  await ordinary(f.factory, line('scale', 'r', '2')).execute(); assert.equal(f.tree.findShape('r').getAttribute('height'), '8');
+  await ordinary(f.factory, line('set', 'r', 'width', '9')).execute(); assert.equal(f.tree.findShape('r').getAttribute('width'), '9');
+  await ordinary(f.factory, line('addto', 'p', 'r')).execute(); assert.equal(f.tree.findShape('r').parent, f.tree.findShape('p'));
+  assert.deepEqual(await ordinary(f.factory, line('show', 'r')).execute(), f.query.show('r'));
+  await ordinary(f.factory, line('save', 'out.svg')).execute(); assert.equal(f.document.associatedPath, 'out.svg');
 });
 
 for (const [type, args] of [
   ['rect', ['1','2','3','4','red']], ['circle', ['1','2','3']], ['ellipse', ['1','2','3','4']],
   ['line', ['1','2','3','4','black']], ['text', ['1','2',token('in', true)]], ['g', []],
 ] as const) test(`tail in creates ${type} in selected container`, async () => {
-  const f = setup(); await f.factory.create(line('create', type, 'new', ...args, 'in', 'p')).execute();
+  const f = setup(); await ordinary(f.factory, line('create', type, 'new', ...args, 'in', 'p')).execute();
   assert.equal(f.tree.findShape('new').parent, f.tree.findShape('p'));
   if (type === 'text') assert.equal(f.tree.findShape('new').getAttribute('text'), 'in');
 });
 
 test('quoted in and text ending in remain text content, while quoted directive is not parsed', async () => {
   const f = setup();
-  await f.factory.create(line('create', 'text', 'a', '1', '2', token('in', true))).execute();
-  await f.factory.create(line('create', 'text', 'b', '1', '2', token('ends in', true))).execute();
+  await ordinary(f.factory, line('create', 'text', 'a', '1', '2', token('in', true))).execute();
+  await ordinary(f.factory, line('create', 'text', 'b', '1', '2', token('ends in', true))).execute();
   assert.equal(f.tree.findShape('a').getAttribute('text'), 'in'); assert.equal(f.tree.findShape('a').parent, f.tree.root);
   assert.equal(f.tree.findShape('b').getAttribute('text'), 'ends in');
-  assert.throws(() => f.factory.create(line('create', 'g', 'new', token('in', true), 'p')).execute(), /parameters/);
+  assert.throws(() => ordinary(f.factory, line('create', 'g', 'new', token('in', true), 'p')).execute(), /parameters/);
 });
 
 test('quoted metadata reaches domain shape validation and set text requires quotes', async () => {
   const f = setup();
-  assert.throws(() => f.factory.create(line('create', 'text', 'bad', '1', '2', 'unquoted')).execute(), /quoted/);
-  await f.factory.create(line('create', 'text', 'good', '1', '2', token('', true))).execute();
+  assert.throws(() => ordinary(f.factory, line('create', 'text', 'bad', '1', '2', 'unquoted')).execute(), /quoted/);
+  await ordinary(f.factory, line('create', 'text', 'good', '1', '2', token('', true))).execute();
   assert.throws(() => f.factory.create(line('set', 'good', 'text', 'unquoted')), /quoted/);
-  await f.factory.create(line('set', 'good', 'text', token('new text', true))).execute();
+  await ordinary(f.factory, line('set', 'good', 'text', token('new text', true))).execute();
   assert.equal(f.tree.findShape('good').getAttribute('text'), 'new text');
 });
 
@@ -97,7 +102,7 @@ test('shape-specific validation stays in domain factory and failures leave tree 
     line('create', 'circle', 'new', '0', '0', '-1'), line('create', 'rect', 'new', 'Infinity','0','1','1')]) {
     const command = f.factory.create(input); assert.ok(command instanceof UndoableCommand); assert.throws(() => command.execute());
   }
-  assert.throws(() => f.factory.create(line('create', 'box', 'new')).execute(), /unknown shape type: box/);
+  assert.throws(() => ordinary(f.factory, line('create', 'box', 'new')).execute(), /unknown shape type: box/);
   assert.deepEqual(f.query.tree().lines, before);
 });
 
