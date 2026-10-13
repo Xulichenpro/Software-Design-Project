@@ -10,9 +10,11 @@ export class CommandExecutor {
   readonly #undoStack: UndoableCommand[] = [];
   readonly #redoStack: UndoableCommand[] = [];
   #historyBlocked = false;
+  #documentEstablished = false;
 
   async execute(command: Command | HistoryControlCommand): Promise<CommandResult> {
     if (command instanceof HistoryControlCommand) {
+      if (!this.#documentEstablished) throw new EditorError("no document. use 'init' or 'read' first");
       const direction = command.getDirection();
       if (this.#historyBlocked) throw new EditorError(`${direction} not allowed after io command`);
       const source = direction === 'undo' ? this.#undoStack : this.#redoStack;
@@ -28,10 +30,12 @@ export class CommandExecutor {
     }
     const result = await command.execute();
     if (command instanceof UndoableCommand) {
+      this.#documentEstablished = true;
       this.#undoStack.push(command);
       this.#redoStack.length = 0;
       this.#historyBlocked = false;
     } else if (command instanceof BarrierCommand) {
+      this.#documentEstablished = true;
       this.#undoStack.length = 0;
       this.#redoStack.length = 0;
       this.#historyBlocked = true;
