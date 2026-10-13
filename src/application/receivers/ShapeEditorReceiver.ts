@@ -40,9 +40,9 @@ export class ShapeEditorReceiver {
   editStructure(parameters: StructureEditParameters): CommandResult {
     this.tree.editStructure({ placements: parameters.placements }); return { lines: [parameters.message] };
   }
-  create(type: string, id: string, args: readonly string[], parentId?: string): EditOutcome<StructureEditRecord> {
+  create(type: string, id: string, args: readonly string[], parentId?: string, quoted?: readonly boolean[]): EditOutcome<StructureEditRecord> {
     const parent = this.tree.getContainer(parentId); this.requireAvailableId(id);
-    const shape = this.factory.createFromArguments(type, id, args);
+    const shape = this.factory.createFromArguments(type, id, args, quoted);
     return this.applyPlan([{ shape, parent, index: parent.children.items.length }],
       `${shape.label} created${parentId ? ' in ' + parent.label : ''}`, `${shape.label} deleted`);
   }

@@ -9,7 +9,7 @@ import { ShapeStyle } from '../shapes/ShapeStyle.js';
 import type { SvgElement } from '../representation/SvgElement.js';
 export class ShapeFactory {
   // Name dispatch is the documented extension point for future shape providers.
-  createFromArguments(type: string, id: string, args: readonly string[]): Shape {
+  createFromArguments(type: string, id: string, args: readonly string[], quoted?: readonly boolean[]): Shape {
     const numeric = (index: number) => {
       const value = args[index]; if (value === undefined || !value.trim() || !Number.isFinite(Number(value))) throw new Error('geometry must be finite');
       return Number(value);
@@ -20,7 +20,9 @@ export class ShapeFactory {
       case 'circle': min = 3; max = 4; shape = new CircleShape(id, numeric(0), numeric(1), numeric(2)); style = 'fill'; break;
       case 'ellipse': min = 4; max = 5; shape = new EllipseShape(id, numeric(0), numeric(1), numeric(2), numeric(3)); style = 'fill'; break;
       case 'line': min = 4; max = 5; shape = new LineShape(id, numeric(0), numeric(1), numeric(2), numeric(3)); style = 'stroke'; break;
-      case 'text': min = 3; max = 3; shape = new TextShape(id, numeric(0), numeric(1), args[2] ?? ''); break;
+      case 'text':
+        if (quoted && !quoted[2]) throw new Error('text content must be quoted');
+        min = 3; max = 3; shape = new TextShape(id, numeric(0), numeric(1), args[2] ?? ''); break;
       case 'g': min = 0; max = 0; shape = new GroupShape(id); break;
       default: throw new Error(`unknown shape type: ${type} (is the plugin loaded?)`);
     }
