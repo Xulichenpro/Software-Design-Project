@@ -138,3 +138,15 @@ test('invalid domain structure plans preserve parents, order and index atomicall
   assert.throws(() => tree.editStructure({ placements: [{ shape: duplicate, parent: tree.root, index: 0 }] }), /id already exists/);
   assert.deepEqual(query.tree().lines, before);
 });
+
+test('receiver feedback follows leaf/group movement, quoted text and scale error contracts', () => {
+  const { editor, document } = setup(); document.initialize();
+  editor.create('rect', 'r', ['1', '2', '3', '4']); editor.create('g', 'g', []);
+  editor.create('text', 't', ['1', '2', 'old']);
+  const moved = editor.move({ id: 'r', dx: 3, dy: 4 });
+  assert.deepEqual(moved.result.lines, ['rect#r moved to (4,6)']);
+  assert.deepEqual(editor.move(moved.record.inverse).result.lines, ['rect#r moved back to (1,2)']);
+  assert.deepEqual(editor.move({ id: 'g', dx: 3, dy: 4 }).result.lines, ['g#g moved by (3,4)']);
+  assert.deepEqual(editor.setAttribute({ id: 't', name: 'text', value: 'new title' }).result.lines, ['text#t updated: text="new title"']);
+  assert.throws(() => editor.scale({ id: 'r', factor: 0 }), { message: 'scale factor must be positive' });
+});
