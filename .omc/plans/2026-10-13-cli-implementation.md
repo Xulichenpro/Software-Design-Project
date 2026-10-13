@@ -17,7 +17,7 @@
 ## 六轮实施
 
 - [x] 1. Receiver 基础：tests/domain、tests/application/receivers 与 tests/infrastructure 验证六种 Shape、多态几何、原子编辑、索引/顺序/无环、三个共享树 Receiver、局部正反 EditRecord、XML 往返与安全文件写入。实现 domain、contracts、records、receivers 和文档 IO 的必要 infrastructure；ShapeFactory 属基础层，命令工厂留待第三轮。独立验证：32/32 测试、严格类型检查通过；实现 c91b5a0。
-- [ ] 2. Command：tests/application/commands 验证每个具体命令 execute/undo/redo、记录只捕获一次、文档和查询转发、控制命令接收目标参数。实现 commands 五个抽象协议及全部具体类，不增加历史管理类或 target 绑定。
+- [x] 2. Command：tests/application/commands 验证每个具体命令 execute/undo/redo、记录只捕获一次、文档和查询转发、控制命令接收目标参数。实现 commands 五个抽象协议及全部具体类，不增加历史管理类或 target 绑定。独立验证：49/49 测试、严格类型检查通过；测试 3a7ad59，实现 d63a11f。
 - [ ] 3. Factory：tests/application/factory 验证全部命令语法、参数数量、数值、引号信息、in 子句和类别；实现 CommandFactory 与输入契约。
 - [ ] 4. Executor：tests/application/execution 验证内部双栈、查询不入栈、屏障、失败不移栈、新编辑清 redo、控制命令目标。只依赖命令抽象。
 - [ ] 5. Application：tests/cli 验证解析空行/注释/转义/引号、顺序执行、统一 error/warning 输出、错误后继续；实现 parser、renderer、CliApplication，使用 Terminal 替身。
