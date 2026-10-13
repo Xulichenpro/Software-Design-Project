@@ -44,3 +44,16 @@ test('NodeFileGateway atomically replaces files and cleans temporary files on fa
     await assert.rejects(files.read(join(dir, 'missing')), /cannot read file/);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
+
+test('SVG import rejects prototype-like unknown attribute names', () => {
+  assert.throws(() => codec.decode('<svg width="1" height="1"><rect id="a" __proto__="bad"/></svg>'), /unknown attribute: __proto__/);
+});
+
+test('XML round-trip preserves referenced carriage returns in text and whitespace in styles', () => {
+  const tree = codec.decode('<svg width="1" height="1"><text id="t" fill="a&#10;b&#9;c&#13;d">a&#13;b&#10;c&#9;d</text></svg>').tree;
+  assert.equal(tree.findShape('t').getAttribute('text'),'a\rb\nc\td');
+  assert.equal(tree.findShape('t').getAttribute('fill'),'a\nb\tc\rd');
+  const again = codec.decode(codec.encode(tree)).tree;
+  assert.equal(again.findShape('t').getAttribute('text'),tree.findShape('t').getAttribute('text'));
+  assert.equal(again.findShape('t').getAttribute('fill'),tree.findShape('t').getAttribute('fill'));
+});

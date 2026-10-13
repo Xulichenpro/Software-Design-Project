@@ -53,3 +53,32 @@ test('nested groups delegate geometry atomically and set style on themselves', (
   outer.move(4, 5); outer.scale(0.5);
   assert.equal(first.getAttribute('x'), '2.5');
 });
+
+test('finite moves reject catastrophic cancellation before changing geometry', () => {
+  const shape = factory.createFromArguments('rect', 'r', ['1','2','3','4']);
+  const before = shape.toSvgElement();
+  assert.throws(() => shape.move(1e20, 0), /reversible|precision/);
+  assert.deepEqual(shape.toSvgElement(), before);
+});
+
+test('finite scales reject lost small values and inverse overflow before mutation', () => {
+  const tiny = factory.createFromArguments('circle', 'c', ['0','0','1e-300']);
+  assert.throws(() => tiny.scale(1e-100), /reversible|precision/);
+  assert.equal(tiny.getAttribute('r'), '1e-300');
+  const huge = factory.createFromArguments('rect', 'r', [String(Number.MAX_VALUE),'0','0','0']);
+  assert.throws(() => huge.scale(0.055), /finite|reversible/);
+  assert.equal(huge.getAttribute('x'), String(Number.MAX_VALUE));
+  const subnormal = factory.createFromArguments('circle', 's', ['0','0',String(Number.MIN_VALUE)]);
+  assert.throws(() => subnormal.scale(0.5), /reversible|precision/);
+  assert.equal(subnormal.getAttribute('r'), String(Number.MIN_VALUE));
+});
+
+test('group numeric reversibility validates every descendant before editing any child', () => {
+  const group = factory.createFromArguments('g', 'g', []) as GroupShape;
+  const normal = factory.createFromArguments('circle', 'normal', ['0','0','0']);
+  const tiny = factory.createFromArguments('circle', 'tiny', ['0','0','1e-300']);
+  group.children.insert(normal, 0); group.children.insert(tiny, 1);
+  const before = group.toSvgElement();
+  assert.throws(() => group.scale(1e-100), /reversible|precision/);
+  assert.deepEqual(group.toSvgElement(), before);
+});

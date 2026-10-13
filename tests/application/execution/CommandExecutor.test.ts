@@ -10,6 +10,7 @@ import { SvgXmlCodec } from '../../../src/infrastructure/svg/SvgXmlCodec.js';
 import { MoveCommand } from '../../../src/application/commands/editing/MoveCommand.js';
 import { CreateCommand } from '../../../src/application/commands/editing/CreateCommand.js';
 import { SetAttributeCommand } from '../../../src/application/commands/editing/SetAttributeCommand.js';
+import { ScaleCommand } from '../../../src/application/commands/editing/ScaleCommand.js';
 import { InitCommand } from '../../../src/application/commands/document/InitCommand.js';
 import { ReadCommand } from '../../../src/application/commands/document/ReadCommand.js';
 import { SaveCommand } from '../../../src/application/commands/document/SaveCommand.js';
@@ -146,5 +147,16 @@ class AsyncUndo extends HistoryControlCommand {
 test('executor passes the current target through abstract controls and awaits their results', async () => {
   const f=setup(); await f.executor.execute(new MoveCommand(f.editor,{id:'r',dx:3,dy:4}));
   const result=await f.executor.execute(new AsyncUndo()); assert.deepEqual(result.lines,['rect#r moved back to (1,2)']);
+  await f.executor.execute(redo()); assert.equal(f.tree.findShape('r').getAttribute('x'),'4');
+});
+
+test('nonreversible finite numeric edits fail without changing document or undo/redo history', async () => {
+  const f = setup(); f.editor.create('circle','tiny',['0','0','1e-300']);
+  await f.executor.execute(new MoveCommand(f.editor,{id:'r',dx:3,dy:4}));
+  await assert.rejects(f.executor.execute(new MoveCommand(f.editor,{id:'r',dx:1e20,dy:0})), /reversible|precision/);
+  await assert.rejects(f.executor.execute(new ScaleCommand(f.editor,{id:'tiny',factor:1e-100})), /reversible|precision/);
+  assert.equal(f.tree.findShape('r').getAttribute('x'),'4'); assert.equal(f.tree.findShape('tiny').getAttribute('r'),'1e-300');
+  await f.executor.execute(undo()); assert.equal(f.tree.findShape('r').getAttribute('x'),'1');
+  await assert.rejects(f.executor.execute(new MoveCommand(f.editor,{id:'r',dx:1e20,dy:0})), /reversible|precision/);
   await f.executor.execute(redo()); assert.equal(f.tree.findShape('r').getAttribute('x'),'4');
 });
