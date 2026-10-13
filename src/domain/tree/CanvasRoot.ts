@@ -2,9 +2,9 @@ import { ChildCollection } from './ChildCollection.js';
 import type { ShapeContainer } from './ShapeContainer.js';
 export class CanvasRoot implements ShapeContainer {
   #width: number; #height: number;
-  readonly #children = new ChildCollection(this);
+  readonly #children: ChildCollection = new ChildCollection(this);
   constructor(width: number, height: number) { this.validateSize(width, height); this.#width = width; this.#height = height; }
-  get children() { return this.#children; }
+  get children(): ChildCollection { return this.#children; }
   get label() { return 'svg'; }
   get size() { return Object.freeze({ width: this.#width, height: this.#height }); }
   resize(width: number, height: number) { this.validateSize(width, height); this.#width = width; this.#height = height; }

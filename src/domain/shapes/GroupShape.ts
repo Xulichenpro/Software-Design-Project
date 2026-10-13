@@ -2,10 +2,10 @@ import { Shape } from './Shape.js';
 import { ChildCollection } from '../tree/ChildCollection.js';
 import type { ShapeContainer } from '../tree/ShapeContainer.js';
 export class GroupShape extends Shape implements ShapeContainer {
-  readonly #children = new ChildCollection(this);
+  readonly #children: ChildCollection = new ChildCollection(this);
   constructor(id: string) { super(id, {}); }
   get tag() { return 'g'; }
-  get children() { return this.#children; }
+  get children(): ChildCollection { return this.#children; }
   protected get xKeys() { return []; }
   protected get yKeys() { return []; }
   override get descendants() { return this.#children.items; }
