@@ -26,7 +26,7 @@ test('missing ids avoid every explicit id including later nodes and produce warn
 for (const body of [
   '<g id="same"/><circle id="same" r="1"/>', '<g transform="translate(1 2)"/>', '<path/>',
   '<rect width="-1"/>', '<text font-size="16">hi</text>', '<text><g/></text>', '<g>unexpected</g>',
-  '<g id="a">', '<g/><svg/>', '<circle r="Infinity"/>', '<g xmlns="urn:other"/>',
+  '<g id="a">', '<g/><svg/>', '<circle r="Infinity"/>', '<g xmlns="urn:other"/>', '<text text="hi"/>',
 ]) test(`reject unsupported or invalid SVG: ${body}`, () => {
   assert.throws(() => codec.decode(`<svg width="100" height="100">${body}</svg>`));
 });
