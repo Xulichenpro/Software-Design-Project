@@ -115,3 +115,26 @@ test('failed read/save retain shared document and association; successful save a
   assert.ok(files.files.has('first.svg')); assert.equal(document.associatedPath, 'first.svg');
   document.initialize(); assert.equal(document.associatedPath, undefined);
 });
+
+test('scale rejects an infinite reciprocal before editing and records are immutable', () => {
+  const { editor, document, tree } = setup(); document.initialize();
+  editor.create('rect', 'r', ['1', '2', '3', '4']);
+  assert.throws(() => editor.scale({ id: 'r', factor: Number.MIN_VALUE }), /finite/);
+  assert.equal(tree.findShape('r').getAttribute('width'), '3');
+  const result = editor.move({ id: 'r', dx: 2, dy: 3 });
+  assert.ok(Object.isFrozen(result.record.forward)); assert.ok(Object.isFrozen(result.record.inverse));
+  const structure = editor.create('g', 'group', []);
+  assert.ok(Object.isFrozen(structure.record.forward.placements));
+  assert.ok(Object.isFrozen(structure.record.forward.placements[0]));
+});
+
+test('invalid domain structure plans preserve parents, order and index atomically', () => {
+  const { editor, document, tree, query } = setup(); document.initialize();
+  editor.create('g', 'a', []); editor.create('g', 'b', []);
+  const a = tree.findShape('a'); const b = tree.findShape('b'); const before = query.tree().lines;
+  assert.throws(() => tree.editStructure({ placements: [{ shape: a, parent: tree.root, index: 99 }, { shape: b, index: 0 }] }));
+  assert.deepEqual(query.tree().lines, before); assert.equal(a.parent, tree.root); assert.equal(tree.findShape('b'), b);
+  const duplicate = new ShapeFactory().createFromArguments('g', 'a', []);
+  assert.throws(() => tree.editStructure({ placements: [{ shape: duplicate, parent: tree.root, index: 0 }] }), /id already exists/);
+  assert.deepEqual(query.tree().lines, before);
+});
