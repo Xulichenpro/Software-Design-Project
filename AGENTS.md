@@ -27,6 +27,43 @@ flowchart TB
     Infrastructure[SvgXmlCodec / NodeFileGateway] --> Ports
 ```
 
+## ShapeTree 与 Document 架构图
+
+```mermaid
+classDiagram
+    ShapeEditorReceiver --> ShapeTree : 编辑内存树
+    QueryReceiver --> ShapeTree : 查询内存树
+    DocumentReceiver --> ShapeTree : read替换内容 / save只读遍历
+    DocumentReceiver --> SvgCodec : 编解码接口
+    DocumentReceiver --> FileGateway : 文件接口
+    SvgXmlCodec ..|> SvgCodec
+    NodeFileGateway ..|> FileGateway
+    SvgXmlCodec --> ShapeFactory : read创建图形
+    ShapeEditorReceiver --> ShapeFactory : create创建图形
+    ShapeFactory ..> Shape : 创建具体子类
+    ShapeTree *-- CanvasRoot
+    ShapeTree --> Shape : id索引
+    CanvasRoot o-- Shape : 顶层孩子
+    Shape <|-- RectShape
+    Shape <|-- CircleShape
+    Shape <|-- EllipseShape
+    Shape <|-- LineShape
+    Shape <|-- TextShape
+    Shape <|-- GroupShape
+    GroupShape o-- Shape : 可递归包含孩子
+    class Shape {
+        <<abstract>>
+    }
+    class SvgCodec {
+        <<interface>>
+    }
+    class FileGateway {
+        <<interface>>
+    }
+```
+
+三个 receiver 共享同一 ShapeTree 实例；read 验证临时树后替换其内容，save 才写文件。Shape/ShapeTree 不依赖 DocumentReceiver 或 IO。
+
 ## Command 与 Composite
 
 - Command 五角色：`CommandFactory` 是 Client，`CommandExecutor` 是 Invoker，`Command` 是抽象，具体 `*Command` 绑定对应 Receiver。命令保存参数并转发，业务由 Receiver 与领域对象完成。
