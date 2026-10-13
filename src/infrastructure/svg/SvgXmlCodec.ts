@@ -44,7 +44,7 @@ export class SvgXmlCodec implements SvgCodec {
     const counters = new Map<string, number>(); const warnings: string[] = [];
     const representation = (element: Element): SvgElement => {
       this.validateNamespace(element);
-      const attributes: Record<string, string> = {};
+      const attributes: Record<string, string> = Object.create(null);
       for (let i = 0; i < element.attributes.length; i++) {
         const attr = element.attributes.item(i)!;
         if (attr.name === 'xmlns' && attr.value === SvgXmlCodec.namespace) continue;
@@ -83,7 +83,8 @@ export class SvgXmlCodec implements SvgCodec {
       parent.appendChild(node);
     };
     for (const shape of tree.root.children.items) append(root, shape.toSvgElement());
-    return '<?xml version="1.0" encoding="UTF-8"?>\n' + new XMLSerializer().serializeToString(document);
+    const serialized = new XMLSerializer().serializeToString(document).replace(/\r/g, '&#13;');
+    return '<?xml version="1.0" encoding="UTF-8"?>\n' + serialized;
   }
   private validateNamespace(element: Element) {
     if (element.prefix || (element.namespaceURI && element.namespaceURI !== SvgXmlCodec.namespace)) throw new EditorError('unsupported SVG namespace');

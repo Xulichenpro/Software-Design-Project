@@ -44,12 +44,24 @@ export abstract class Shape {
     const result = { ...this.#geometry };
     for (const key of this.xKeys) result[key] = result[key]! + dx;
     for (const key of this.yKeys) result[key] = result[key]! + dy;
-    this.validateGeometry(result); return result;
+    this.validateGeometry(result);
+    for (const key of this.xKeys) this.validateRestoration(this.#geometry[key]!, result[key]! - dx);
+    for (const key of this.yKeys) this.validateRestoration(this.#geometry[key]!, result[key]! - dy);
+    return result;
   }
   private scaled(factor: number) {
     if (!Number.isFinite(factor) || factor <= 0) throw new Error('scale factor must be positive and finite');
     const result = Object.fromEntries(Object.entries(this.#geometry).map(([key, value]) => [key, value * factor]));
-    this.validateGeometry(result); return result;
+    this.validateGeometry(result);
+    const inverse = 1 / factor;
+    if (!Number.isFinite(inverse)) throw new Error('scale inverse must be finite');
+    for (const [key, value] of Object.entries(result)) this.validateRestoration(this.#geometry[key]!, value * inverse);
+    return result;
+  }
+  private validateRestoration(original: number, restored: number) {
+    if (!Number.isFinite(restored)) throw new Error('inverse geometry must be finite');
+    const tolerance = 16 * Number.EPSILON * Math.abs(original);
+    if (Math.abs(restored - original) > tolerance) throw new Error('edit must have a finite reversible result at this numeric precision');
   }
   private validateGeometry(geometry: Record<string, number>) {
     for (const [key, value] of Object.entries(geometry)) {
