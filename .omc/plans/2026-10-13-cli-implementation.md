@@ -23,4 +23,4 @@
 - [ ] 5. Application：tests/cli 验证解析空行/注释/转义/引号、顺序执行、统一 error/warning 输出、错误后继续；实现 parser、renderer、CliApplication，使用 Terminal 替身。
 - [ ] 6. Bootstrap：tests/acceptance 回放第 6 节与 6.1 版本 A、真实 npm run cli、保存再读与 IO 错误恢复。实现 NodeTerminal 和 ApplicationBootstrap，装配共享树及 IO，提供 CLI 入口。
 
-每轮独立 verifier 检查实现与证据。最终更新 doc/README.md 中过程记录、一致性自查和质量证据。远程未配置，不自动声称完成推送；final tag 属最终交付流程，当前任务以代码实现和分轮本地提交为范围。
+每轮独立 verifier 检查实现与证据。最终更新 doc/README.md 中过程记录、一致性自查和质量证据。已确认 origin 配置；final tag 属最终交付流程，当前任务以代码实现和分轮本地提交为范围。
