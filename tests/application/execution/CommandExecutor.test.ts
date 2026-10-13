@@ -37,12 +37,12 @@ function setup(initialized = true, files: FileGateway = new MemoryFiles()) {
 }
 const undo = () => new UndoCommand(); const redo = () => new RedoCommand();
 
-test('empty history reports direction and failed initial edit leaves both stacks empty', async () => {
+test('history controls require a document and failed initial edit does not establish one', async () => {
   const f = setup(false);
-  await assert.rejects(f.executor.execute(undo()), /nothing to undo/);
-  await assert.rejects(f.executor.execute(redo()), /nothing to redo/);
+  await assert.rejects(f.executor.execute(undo()), /no document\. use 'init' or 'read' first/);
+  await assert.rejects(f.executor.execute(redo()), /no document\. use 'init' or 'read' first/);
   await assert.rejects(f.executor.execute(new MoveCommand(f.editor, {id:'missing',dx:1,dy:2})), /no document/);
-  await assert.rejects(f.executor.execute(undo()), /nothing to undo/);
+  await assert.rejects(f.executor.execute(undo()), /no document\. use 'init' or 'read' first/);
   assert.match((await f.executor.execute(new HelpCommand(f.query))).lines.join('\n'), /create/);
 });
 
