@@ -21,6 +21,8 @@
 - [x] 3. Factory：tests/application/factory 验证全部命令语法、参数数量、数值、引号信息、in 子句和类别；实现 CommandFactory 与输入契约。独立验证：118/118 测试、严格类型检查及累计 diff 检查通过；测试 7d2dd8b / 6e35959，实现 27c59c4。
 - [x] 4. Executor：tests/application/execution 验证内部双栈、查询不入栈、屏障、失败不移栈、新编辑清 redo、控制命令目标。只依赖命令抽象。独立验证：130/130 测试、严格类型检查及累计 diff 检查通过；测试 d375e75，实现 2824c7b。追加回归：未建立文档的 undo/redo 必须采用规格的 no-document 提示，第五轮累计验证覆盖此修复。
 - [x] 5. Application：tests/cli 验证解析空行/注释/转义/引号、顺序执行、统一 error/warning 输出、错误后继续；实现 parser、renderer、CliApplication，使用 Terminal 替身。独立验证：153/153 测试、严格类型检查及累计 diff 检查通过；测试 8cd1f77，实现 2f9cfe2，含 no-document 回归修复。
-- [ ] 6. Bootstrap：tests/acceptance 回放第 6 节与 6.1 版本 A、真实 npm run cli、保存再读与 IO 错误恢复。实现 NodeTerminal 和 ApplicationBootstrap，装配共享树及 IO，提供 CLI 入口。
+- [x] 6. Bootstrap：tests/acceptance 回放第 6 节与 6.1 版本 A、真实 npm run cli、保存再读与 IO 错误恢复。实现 NodeTerminal 和 ApplicationBootstrap，装配共享树及 IO，提供 CLI 入口。独立最终验证：167/167 测试、严格类型检查、生产构建、源码与编译入口回放、累计 diff 检查通过；测试 6d1b6ed，实现 fd43ad1。最终代码审查的数值可逆性与 XML 边界先提交回归测试 7f486cd，再提交修复 f828442，独立复现检查通过。verifier 与 code-reviewer 最终批准。
 
 每轮独立 verifier 检查实现与证据。最终更新 doc/README.md 中过程记录、一致性自查和质量证据。已确认 origin 配置；final tag 属最终交付流程，当前任务以代码实现和分轮本地提交为范围。
+
+用户追加的编辑器错误：GroupShape / CanvasRoot 的 children 循环推断 TS7022/TS7023。编译期回归测试 5ecd1e2，显式 ChildCollection 字段与 getter 类型修复 085c29d。TypeScript 5.9.3 和项目 TypeScript 7 检查通过；累计 167 行为测试与生产构建通过，未改变运行时行为。

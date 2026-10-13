@@ -1,5 +1,14 @@
 # SVG CLI 架构方案
 
+实现已完成，使用 Node.js 24 与项目本地 TypeScript 工具链。在 `pj/` 下运行：
+
+```powershell
+npm ci
+npm run cli
+```
+
+CLI 使用 `svg>` 提示符；输入 `help` 查看语法，通过 EOF 结束输入。双引号内只支持 `\"` 和 `\\` 两种转义；含空格的 Windows 路径放在双引号中时，反斜杠须写成 `\\`。生产入口可用 `npm run build` 构建后执行 `node dist/bootstrap/main.js`。
+
 ## 1. 架构图
 
 ### 1.1 命令、执行器与接收者
@@ -273,7 +282,7 @@ Infrastructure --> Domain
 
 ## 2. 目录划分
 
-以下为规划目录，尚未创建业务实现。所有类一类一文件，文件名与类名相同。
+以下目录已按方案实现。所有类一类一文件，文件名与类名相同；接口和不可变参数类型独立存放。
 
 ```text
 pj/
@@ -305,6 +314,7 @@ pj/
 │   ├── domain/
 │   ├── application/
 │   ├── infrastructure/
+│   ├── cli/
 │   └── acceptance/
 ├── doc/README.md
 ├── references/
@@ -420,7 +430,7 @@ pj/
 
 需要旧状态的编辑在首次执行前由 receiver 准备记录，首轮成功后命令保留记录；redo 不重新捕获旧状态。记录覆盖受影响子树与原父节点、原顺序，保证一条编辑命令只有一个历史单元，不保存每步全文档快照。
 
-编辑成功才加入 undo 栈、清空 redo 并解除屏障；查询不改历史；init/read/save 和 canvas 修改尺寸成功后禁止 undo/redo，直到下一次成功编辑。失败不改变图形、文件关联或历史。屏障后的旧历史是否清空仍列为待确认项。
+编辑成功才加入 undo 栈、清空 redo 并解除屏障；查询不改历史；init/read/save 和 canvas 修改尺寸成功后清空旧历史并禁止 undo/redo，直到下一次成功编辑。失败不改变图形、文件关联或历史。executor 通过成功执行的编辑/屏障类别记录文档已经建立，使首次 init/read 前的 undo/redo 也返回规格要求的 no-document 错误，而无需依赖 receiver 或领域对象。
 
 ### 3.3 Composite 模式的落地
 
@@ -428,9 +438,9 @@ Shape 是统一抽象，五个叶子类与 GroupShape 都是 Shape。GroupShape 
 
 叶子实现自身几何行为，GroupShape 的 move/scale 递归调用孩子；结构删除、归属和顺序由 ShapeTree 维护，以同步树与 id 索引。CanvasRoot 与 GroupShape 共享 ShapeContainer 接口，CanvasRoot 本身不作为普通图形暴露。
 
-统一接口不意味着属性白名单相同，也不意味着 set 必须递归改写所有孩子；普通 g 的样式传播规则仍需确认。scale 按实验规则同乘位置和尺寸，不用追加 transform 替代内存几何操作。
+统一接口不意味着属性白名单相同，也不意味着 set 必须递归改写所有孩子；普通 g 的 set 只设置自身样式。scale 按实验规则同乘位置和尺寸，不用追加 transform 替代内存几何操作。
 
-## 4. 变化点与待确认事项
+## 4. 变化点与已确认语义
 
 | 变化点 | 当前取舍 |
 |---|---|
@@ -462,12 +472,35 @@ Shape 是统一抽象，五个叶子类与 GroupShape 都是 Shape。GroupShape 
 | 2026-10-13 | 用户明确 executor 选取栈顶目标后作为参数传给 Undo/RedoCommand，由控制命令调用目标 undo/redo；删除 bindTarget、HistoryActions 和 HistoryReceiver |
 | 2026-10-13 | 命令层保留；领域层改为三个 receiver 共享内存 ShapeTree，移除 EditorSession/SvgDocument 中转，read 建树、save 写出 |
 | 2026-10-13 | 按用户要求以“架构图 → 目录划分 → 依赖关系”组织本文件，精简 AGENTS.md 并保留 Command、Composite 和 TDD 原则 |
+| 2026-10-13 | 用户批准自底向上六轮实施与第 4 节补充语义，要求每轮测试和代码分别提交 |
+| 2026-10-13 | 六轮依次完成 Receiver 基础、Command、CommandFactory、CommandExecutor、CliApplication、Bootstrap；每层经过独立 verifier 复核后进入下一层 |
+| 2026-10-13 | 规格对照发现首次 init/read 前 undo/redo 错误提示不符，先提交失败回归测试，再修正 executor 的文档建立状态 |
+| 2026-10-13 | 独立代码审查复现极端浮点编辑无法撤销、未知 `__proto__` XML 属性被漏掉、文本回车在 XML 往返中被规范化；回归测试确认 6 项失败后修复并重新验证 |
+| 2026-10-13 | 最终累计 167 项测试、严格类型检查、生产构建、源码/编译入口回放通过，独立 verifier 与 code-reviewer 均批准 |
+| 2026-10-13 | 用户报告 GroupShape / CanvasRoot 的 children 在编辑器中出现 TS7022；用 TypeScript 5.9.3 复现 TS7022/TS7023，并发现项目 TypeScript 7 编译检查未暴露该循环推断。先提交编译期非 any / 精确类型回归，再为两类字段与 getter 显式标注 ChildCollection，两个编译器均通过 |
+
+### 5.1 分轮提交
+
+| 循环 | 先提交测试 | 后提交实现 | 本轮累计测试 |
+|---|---|---|---|
+| Shape / ShapeTree / Receiver / 文档 IO | `c1e329a`（另有边界和反馈测试提交） | `c91b5a0` | 32 |
+| Command | `3a7ad59` | `d63a11f` | 49 |
+| CommandFactory | `7d2dd8b`、`6e35959` | `27c59c4` | 118 |
+| CommandExecutor | `d375e75` | `2824c7b` | 130 |
+| CliApplication | `8cd1f77` | `2f9cfe2` | 153 |
+| Bootstrap / 真实终端 | `6d1b6ed` | `fd43ad1` | 167（含最终回归） |
+
+额外回归同样分开提交：无文档历史错误 `8948e84` → `d981258`；数值可逆性与 XML 边界 `7f486cd` → `f828442`；容器 children 的循环类型推断 `5ecd1e2` → `085c29d`。文件末尾空白另以 `06d3ee2` 清理。首轮与各层 RED 运行确认缺少对应模块，边界修复 RED 运行确认实际行为错误；之后各层均运行累计测试和严格类型检查。
 
 ## 6. 一致性自查
 
-当前为架构文档与环境准备阶段，业务目录尚未实现。本文件中的目录与类是实现目标，不能宣称代码已通过架构一致性检查。
+实际业务目录与第 2 节一致。补充文件为启动入口 `src/bootstrap/main.ts`、生产构建配置 `tsconfig.build.json`，以及 CLI 和终端测试；构建输出 `dist/` 已加入忽略规则。
 
-实现后逐项记录：实际目录是否与第 2 节一致，差异是否写入修订记录；抽样 import 是否符合第 3 节；是否仅有两处名字分派；是否重新出现独立历史管理类、target 绑定方法或文档中转；是否所有图形行为通过对象多态实现。
+- 抽样并经独立审查确认：domain 只导入领域模块，commands 只依赖对应 receiver、records、contracts 与命令基类，executor 只导入抽象命令和 contracts，CLI 只依赖 factory、execution、contracts 与 CLI 自身模块。
+- 名字分派只有 `ShapeFactory` 与 `CommandFactory` 两处；XML 导入共用图形工厂，移动、缩放、属性、显示摘要、序列化通过图形多态完成。
+- executor 内部保存双栈；无独立 `CommandHistory`、`HistoryReceiver`、`HistoryActions`、`bindTarget` 或 `EditorSession/SvgDocument` 中转。
+- 三个 receiver 共用一个 ShapeTree；read 完整验证临时树后替换共享树内容，save 成功后更新路径；结构记录只保存受影响对象与局部位置。
+- 为实现规格输出，Shape 新增多态的 `movementSummary` / `attributeSummary`；为批量原子性新增 `validateMove` / `validateScale`。CreateCommand 保存引号标记并传给领域工厂校验文本，不引入额外标签分派。
 
 ## 7. 质量保证手段
 
@@ -481,12 +514,27 @@ Shape 是统一抽象，五个叶子类与 GroupShape 都是 Shape。GroupShape 
 | infrastructure | 真实 XML 编解码往返、文本转义、缺 id 补齐避让、读写失败不影响当前树 |
 | acceptance | phase_cli_1.md 第 6 节与 6.1 版本 A 回放，验证关键输出及保存 SVG；未来 box 示例不作为本阶段实现要求 |
 
-多对象编辑先完整验证并准备反向参数；应用期间发生异常时局部回滚，保持树、索引和历史一致。读入完成后才提交共享树替换、路径与警告；文件保存采用安全写入，成功后才形成历史屏障。
+多对象编辑先完整验证并准备反向参数；结构操作在临时位置计划上检查无环、唯一 id 和合法顺序，几何操作先检查全部后代，检查失败不进入提交阶段。内置图形的同步提交不调用文件 IO 或外部回调；历史只在操作成功后更新。读入完成后才提交共享树替换、路径与警告；文件保存采用安全写入，成功后才形成历史屏障。
 
-环境准备已经验证 TypeScript 编译器与 tsx 可用；尚无业务测试结果。实际实现完成后，在此记录类型检查、相关测试和 CLI 回放的真实命令及结果。
+最终功能验证于实现提交 `fd43ad1` 后运行；容器类型修复 `085c29d` 后追加两个编译器检查，并重新运行累计测试与生产构建。主线程、实现者和独立 verifier 获得以下真实结果：
+
+| 命令 / 检查 | 结果 |
+|---|---|
+| `npm test` | 167 passed，0 failed，0 skipped |
+| `npm run typecheck` | strict TypeScript 检查退出码 0，覆盖 src 与 tests |
+| `npm exec --yes --package=typescript@5.9.3 -- tsc --noEmit` | 编辑器兼容性检查退出码 0；修复前已复现 TS7022/TS7023 与编译期回归失败 |
+| `npm run build` | 生产构建退出码 0，仅 src 输出到 dist，未包含测试 |
+| `git diff --check a526fca HEAD` | 无空白错误 |
+| `npm run cli` 管道回放 | 未初始化错误、中文文本、嵌套组、move/undo/redo/scale、未知 box 错误后继续处理，末尾 tree 正确，退出码 0 |
+| `node dist/bootstrap/main.js` | 编译后入口 move/undo/redo/show/tree 验证通过，退出码 0 |
+| 规格第 6 节 / 第 6.1 节版本 A | 真实子进程回放与 SVG 保存/读回通过；分别验证 5 个保存元素、7 个导入元素、8 个流程图元素 |
+
+真实终端测试覆盖 CRLF、中文分片、EOF 前全部缓冲行、无末尾换行、输入错误和待定读取关闭。数值操作先校验全部后代及正向后的逆运算；无法在原值相对容差（`16 × Number.EPSILON × abs(original)`）内恢复的编辑被原子拒绝，避免取消误差、下溢和逆运算溢出破坏撤销。零值要求精确恢复。XML 往返包含特殊字符、文本回车及属性 CR/LF/TAB。
+
+独立 verifier 和 code-reviewer 最终批准，无未解决实现问题。环境未提供独立 LSP/AST 诊断工具，未声称运行这些工具；实际类型证据来自完整严格 tsc 检查。
 
 ## 8. 规格与交付
 
 规格来源：[实验要求](../references/phase_cli_1.md)、[Command 参考](../references/command.pdf)、[TDD 参考](../references/tdd.pdf)。具体命令参数、属性白名单、错误格式和输出按实验规格执行。
 
-开发过程分步 Git 提交并推送远程，最终交付时在最终提交上打 `final` tag，截止前完成并确认远程 tag。2026-10-13 检查发现已配置 origin（`https://github.com/Xulichenpro/Software-Design-Project.git`）；截止时间尚未提供，最终交付状态须以真实推送和 tag 检查为准。
+开发过程已经分步本地 Git 提交，满足本次要求的测试/代码分开提交。已配置 origin（`https://github.com/Xulichenpro/Software-Design-Project.git`）；本轮未推送、未创建 `final` tag。课程最终交付仍需推送并在最终提交上打 tag，截止时间尚未提供，不能声称已完成截止前的远程交付。
