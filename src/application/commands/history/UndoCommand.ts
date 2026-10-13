@@ -4,4 +4,3 @@ export class UndoCommand extends HistoryControlCommand {
   getDirection(): 'undo' { return 'undo'; }
   execute(target: UndoableCommand) { return target.undo(); }
 }
-

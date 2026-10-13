@@ -12,4 +12,3 @@ export class CanvasRoot implements ShapeContainer {
     if (!Number.isFinite(width) || !Number.isFinite(height) || width <= 0 || height <= 0) throw new Error('canvas dimensions must be finite and positive');
   }
 }
-

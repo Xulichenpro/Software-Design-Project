@@ -9,4 +9,3 @@ export class GroupCommand extends UndoableCommand<StructureEditParameters> {
   protected firstExecute() { return this.receiver.group(this.id, this.#ids); }
   protected replay(parameters: StructureEditParameters) { return this.receiver.editStructure(parameters); }
 }
-

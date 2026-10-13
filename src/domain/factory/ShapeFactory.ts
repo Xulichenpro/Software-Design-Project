@@ -47,4 +47,3 @@ export class ShapeFactory {
     return shape;
   }
 }
-

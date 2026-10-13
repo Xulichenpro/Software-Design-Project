@@ -4,4 +4,3 @@ export class ReadCommand extends BarrierCommand {
   constructor(private readonly receiver: DocumentReceiver, private readonly path: string) { super(); }
   execute() { return this.receiver.read(this.path); }
 }
-

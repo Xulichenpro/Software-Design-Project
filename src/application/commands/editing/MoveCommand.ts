@@ -9,4 +9,3 @@ export class MoveCommand extends UndoableCommand<MoveParameters> {
   protected firstExecute() { return this.receiver.move(this.#parameters); }
   protected replay(parameters: MoveParameters) { return this.receiver.move(parameters).result; }
 }
-

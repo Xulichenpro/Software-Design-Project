@@ -4,4 +4,3 @@ export class HelpCommand extends QueryCommand {
   constructor(private readonly receiver: QueryReceiver) { super(); }
   execute() { return this.receiver.help(); }
 }
-

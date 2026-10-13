@@ -4,4 +4,3 @@ export class ShowCanvasCommand extends QueryCommand {
   constructor(private readonly receiver: QueryReceiver) { super(); }
   execute() { return this.receiver.showCanvas(); }
 }
-

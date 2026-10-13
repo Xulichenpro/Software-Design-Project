@@ -6,4 +6,3 @@ export class LineShape extends Shape {
  protected get yKeys() { return ["y1","y2"]; }
  protected override get geometryDescription() { return `(${this.geometry.x1},${this.geometry.y1}) -> (${this.geometry.x2},${this.geometry.y2})`; }
 }
-

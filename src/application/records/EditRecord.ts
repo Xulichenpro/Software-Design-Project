@@ -4,4 +4,3 @@ export abstract class EditRecord<T> {
   get forward(): T { return this.#forward; }
   get inverse(): T { return this.#inverse; }
 }
-

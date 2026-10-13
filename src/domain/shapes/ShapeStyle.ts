@@ -12,4 +12,3 @@ export class ShapeStyle {
   }
   get attributes(): Readonly<Record<string, string>> { return Object.freeze(Object.fromEntries(this.#values)); }
 }
-

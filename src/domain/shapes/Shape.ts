@@ -68,4 +68,3 @@ export abstract class Shape {
       children: Object.freeze(this.descendants.map(shape => shape.toSvgElement())) });
   }
 }
-

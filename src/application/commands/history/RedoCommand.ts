@@ -4,4 +4,3 @@ export class RedoCommand extends HistoryControlCommand {
   getDirection(): 'redo' { return 'redo'; }
   execute(target: UndoableCommand) { return target.redo(); }
 }
-

@@ -4,4 +4,3 @@ export class SaveCommand extends BarrierCommand {
   constructor(private readonly receiver: DocumentReceiver, private readonly path?: string) { super(); }
   execute() { return this.receiver.save(this.path); }
 }
-

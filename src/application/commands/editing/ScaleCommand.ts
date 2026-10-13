@@ -9,4 +9,3 @@ export class ScaleCommand extends UndoableCommand<ScaleParameters> {
   protected firstExecute() { return this.receiver.scale(this.#parameters); }
   protected replay(parameters: ScaleParameters) { return this.receiver.scale(parameters).result; }
 }
-

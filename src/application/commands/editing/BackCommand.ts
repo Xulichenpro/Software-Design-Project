@@ -6,4 +6,3 @@ export class BackCommand extends UndoableCommand<StructureEditParameters> {
   protected firstExecute() { return this.receiver.back(this.id); }
   protected replay(parameters: StructureEditParameters) { return this.receiver.editStructure(parameters); }
 }
-

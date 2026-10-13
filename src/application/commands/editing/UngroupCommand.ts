@@ -6,4 +6,3 @@ export class UngroupCommand extends UndoableCommand<StructureEditParameters> {
   protected firstExecute() { return this.receiver.ungroup(this.id); }
   protected replay(parameters: StructureEditParameters) { return this.receiver.editStructure(parameters); }
 }
-

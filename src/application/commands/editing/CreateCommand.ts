@@ -10,4 +10,3 @@ export class CreateCommand extends UndoableCommand<StructureEditParameters> {
   protected firstExecute() { return this.receiver.create(this.type, this.id, this.#args, this.parentId); }
   protected replay(parameters: StructureEditParameters) { return this.receiver.editStructure(parameters); }
 }
-

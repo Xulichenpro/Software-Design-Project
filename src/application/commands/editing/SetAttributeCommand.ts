@@ -9,4 +9,3 @@ export class SetAttributeCommand extends UndoableCommand<AttributeEditParameters
   protected firstExecute() { return this.receiver.setAttribute(this.#parameters); }
   protected replay(parameters: AttributeEditParameters) { return this.receiver.setAttribute(parameters).result; }
 }
-

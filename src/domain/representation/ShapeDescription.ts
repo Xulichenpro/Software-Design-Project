@@ -3,4 +3,3 @@ export interface ShapeDescription {
   readonly geometry: string;
   readonly style: string;
 }
-

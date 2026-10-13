@@ -5,4 +5,3 @@ export class EllipseShape extends Shape {
  protected get xKeys() { return ["cx"]; }
  protected get yKeys() { return ["cy"]; }
 }
-

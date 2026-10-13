@@ -6,4 +6,3 @@ export class DeleteCommand extends UndoableCommand<StructureEditParameters> {
   protected firstExecute() { return this.receiver.delete(this.id); }
   protected replay(parameters: StructureEditParameters) { return this.receiver.editStructure(parameters); }
 }
-

@@ -6,4 +6,3 @@ export class RectShape extends Shape {
  protected get yKeys() { return ["y"]; }
  protected override get geometryDescription() { return `x=${this.geometry.x} y=${this.geometry.y} w=${this.geometry.width} h=${this.geometry.height}`; }
 }
-

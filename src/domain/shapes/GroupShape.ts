@@ -15,4 +15,3 @@ export class GroupShape extends Shape implements ShapeContainer {
   override validateScale(factor: number) { super.validateScale(factor); for (const shape of this.descendants) shape.validateScale(factor); }
   override scale(factor: number) { this.validateScale(factor); for (const shape of this.descendants) shape.scale(factor); }
 }
-

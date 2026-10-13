@@ -58,4 +58,3 @@ export class ShapeTree {
     this.#index = nextIndex;
   }
 }
-

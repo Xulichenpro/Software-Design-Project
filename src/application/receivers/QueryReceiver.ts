@@ -29,4 +29,3 @@ export class QueryReceiver {
       'addto <gid> <id>', 'front <id>', 'back <id>', 'tree [id]', 'show <id>', 'help', 'undo', 'redo'] };
   }
 }
-

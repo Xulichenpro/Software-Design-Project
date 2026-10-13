@@ -14,4 +14,3 @@ export class TextShape extends Shape {
   protected override get geometryDescription() { return `(${this.geometry.x},${this.geometry.y}) "${this.#text}"`; }
   override toSvgElement() { return Object.freeze({ ...super.toSvgElement(), text: this.#text }); }
 }
-

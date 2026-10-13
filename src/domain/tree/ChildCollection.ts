@@ -15,4 +15,3 @@ export class ChildCollection {
     this.#items.splice(index, 1); shape.attachTo(undefined);
   }
 }
-

@@ -6,4 +6,3 @@ export class FrontCommand extends UndoableCommand<StructureEditParameters> {
   protected firstExecute() { return this.receiver.front(this.id); }
   protected replay(parameters: StructureEditParameters) { return this.receiver.editStructure(parameters); }
 }
-

@@ -6,4 +6,3 @@ export class AddToCommand extends UndoableCommand<StructureEditParameters> {
   protected firstExecute() { return this.receiver.addTo(this.groupId, this.id); }
   protected replay(parameters: StructureEditParameters) { return this.receiver.editStructure(parameters); }
 }
-

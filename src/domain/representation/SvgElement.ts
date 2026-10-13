@@ -4,4 +4,3 @@ export interface SvgElement {
   readonly text?: string;
   readonly children: readonly SvgElement[];
 }
-

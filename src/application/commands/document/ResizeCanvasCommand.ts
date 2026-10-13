@@ -4,4 +4,3 @@ export class ResizeCanvasCommand extends BarrierCommand {
   constructor(private readonly receiver: DocumentReceiver, private readonly width: number, private readonly height: number) { super(); }
   execute() { return this.receiver.resizeCanvas(this.width, this.height); }
 }
-

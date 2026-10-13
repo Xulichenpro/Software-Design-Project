@@ -24,4 +24,3 @@ export class DocumentReceiver {
     this.#associatedPath = target; return { lines: [`saved to ${target} (${this.tree.shapes.length} elements)`] };
   }
 }
-

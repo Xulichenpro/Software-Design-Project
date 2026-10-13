@@ -20,4 +20,3 @@ export abstract class UndoableCommand<TParameters = unknown> extends Command {
     return this.#record;
   }
 }
-
