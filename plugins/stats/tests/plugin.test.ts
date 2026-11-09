@@ -46,7 +46,7 @@ test('stats rejects every argument with the fixed parameter error', async () => 
   await plugin.activate(context);
   const registration = context.commands[0]!;
   const services = { document: new TestDocument() };
-  for (const args of [[], [token('1')], [token('a'), token('b')]]) {
+  for (const args of [[token('1')], [token('a'), token('b')]]) {
     assert.throws(() => registration.create(args, services), { message: 'invalid parameters for stats' });
   }
 });

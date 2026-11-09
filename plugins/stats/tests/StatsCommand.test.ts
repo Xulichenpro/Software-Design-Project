@@ -96,6 +96,8 @@ test('stats neither changes the document nor the undo/redo history and emits no 
   assert.deepEqual(replayLog, ['undo']);
   await executor.execute(new RedoCommand());
   assert.deepEqual(replayLog, ['undo', 'redo']);
+  await executor.execute(new UndoCommand());
+  assert.deepEqual(replayLog, ['undo', 'redo', 'undo']);
   await assert.rejects(executor.execute(new UndoCommand()), /nothing to undo/);
 });
 
