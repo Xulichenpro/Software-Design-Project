@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "test": "npm run test:phase1 && npm run test:plugin",
-    "test:phase1": "node --import tsx --test tests/acceptance/*.test.ts tests/application/**/*.test.ts tests/cli/*.test.ts tests/domain/*.test.ts tests/infrastructure/**/*.test.ts",
+    "test:all": "npm run test:phase1 && npm run test:plugin",
+    "test:phase1": "node --import tsx --test tests/acceptance/*.test.ts tests/application/**/*.test.ts tests/cli/*.test.ts tests/domain/*.test.ts tests/infrastructure/**/*.test.ts tests/metrics/*.test.ts",
     "test:plugin": "npm run test:plugin:unit && npm run test:plugin:host",
     "test:plugin:unit": "node --import tsx --test tests/plugin/*.test.ts",
     "test:plugin:host": "npm run build:extension && node scripts/test-vscode.mjs",
@@ -13,6 +14,7 @@
     "typecheck:extension": "tsc -p extensions/vscode-svg/tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json",
     "build:extension": "node extensions/vscode-svg/build.mjs",
+    "metrics": "node scripts/metrics.mjs --from final --to HEAD",
     "cli": "tsx src/bootstrap/main.ts"
   },
   "engines": {

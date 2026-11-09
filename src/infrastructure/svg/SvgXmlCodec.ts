@@ -4,13 +4,13 @@ import type { SvgCodec } from '../../application/contracts/SvgCodec.js';
 import type { SvgImportResult } from '../../application/contracts/SvgImportResult.js';
 import { EditorError } from '../../application/contracts/EditorError.js';
 import { ShapeTree } from '../../domain/tree/ShapeTree.js';
-import type { ShapeFactory } from '../../domain/factory/ShapeFactory.js';
+import type { ShapeProviderRegistry } from '../../application/registries/ShapeProviderRegistry.js';
 import type { SvgElement } from '../../domain/representation/SvgElement.js';
 import { XmlParser } from './XmlParser.js';
 
 export class SvgXmlCodec implements SvgCodec {
   static readonly namespace = 'http://www.w3.org/2000/svg';
-  constructor(private readonly factory: ShapeFactory) {}
+  constructor(private readonly shapes: ShapeProviderRegistry) {}
   decode(text: string): SvgImportResult {
     let document: Document;
     try {
@@ -67,7 +67,7 @@ export class SvgXmlCodec implements SvgCodec {
     for (let node = root.firstChild; node; node = node.nextSibling) {
       if ((node.nodeType === 3 || node.nodeType === 4) && node.nodeValue?.trim()) throw new EditorError('unexpected text in svg');
     }
-    const shapes = this.elementChildren(root).map(element => this.factory.createFromSvgElement(representation(element)));
+    const shapes = this.elementChildren(root).map(element => this.shapes.createFromSvgElement(representation(element)));
     tree.editStructure({ placements: shapes.map((shape, index) => ({ shape, parent: tree.root, index })) });
     return { tree, warnings: Object.freeze(warnings) };
   }

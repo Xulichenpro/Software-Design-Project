@@ -12,10 +12,11 @@ export abstract class Shape {
     this.#id = id; this.#geometry = { ...geometry }; this.validateGeometry(geometry);
   }
   get id() { return this.#id; }
+  get kind(): string { return this.tag; }
   get parent() { return this.#parent; }
   attachTo(parent: ShapeContainer | undefined) { this.#parent = parent; }
   abstract get tag(): string;
-  get label() { return `${this.tag}#${this.id}`; }
+  get label() { return `${this.kind}#${this.id}`; }
   movementSummary(dx: number, dy: number, returning = false): string {
     return `moved${returning ? ' back' : ''} to (${this.#geometry[this.xKeys[0]!]},${this.#geometry[this.yKeys[0]!]})`;
   }
@@ -71,7 +72,7 @@ export abstract class Shape {
   }
   protected get geometryDescription(): string { return Object.entries(this.#geometry).map(([k, v]) => `${k}=${v}`).join(' '); }
   describe(): ShapeDescription {
-    return Object.freeze({ heading: this.label, geometry: this.geometryDescription,
+    return Object.freeze({ heading: `${this.tag}#${this.id}`, geometry: this.geometryDescription,
       style: Object.entries(this.#style.attributes).map(([k, v]) => `${k}=${v}`).join(' ') });
   }
   toSvgElement(): SvgElement {
