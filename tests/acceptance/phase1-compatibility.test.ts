@@ -2,8 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { SvgXmlCodec } from '../../src/infrastructure/svg/SvgXmlCodec.js';
-import { ShapeFactory } from '../../src/domain/factory/ShapeFactory.js';
-import { QueryReceiver } from '../../src/application/receivers/QueryReceiver.js';
+import { createQueryReceiver, createShapeRegistry } from '../helpers/builtins.js';
 import { ApplicationBootstrap } from '../../src/bootstrap/ApplicationBootstrap.js';
 import type { Terminal } from '../../src/application/contracts/Terminal.js';
 
@@ -18,8 +17,8 @@ const expectedTree = [
 ];
 
 test('Phase 1 fixture retains byte-for-byte tree output and generated-id warnings', async () => {
-  const imported = new SvgXmlCodec(new ShapeFactory()).decode(await asset('phase1-nested.svg'));
-  assert.deepEqual(new QueryReceiver(imported.tree).tree().lines, expectedTree);
+  const imported = new SvgXmlCodec(createShapeRegistry()).decode(await asset('phase1-nested.svg'));
+  assert.deepEqual(createQueryReceiver(imported.tree).tree().lines, expectedTree);
   assert.deepEqual(imported.warnings, ['assigned id text1 to unnamed <text>']);
 });
 
@@ -46,10 +45,10 @@ test('Phase 1 CLI read, move, undo and redo retain their existing visible behavi
 
 test('Phase 1 still rejects SVG outside its supported business vocabulary', async () => {
   const text = await asset('outline.svg');
-  assert.throws(() => new SvgXmlCodec(new ShapeFactory()).decode(text), /unknown attribute: id/);
+  assert.throws(() => new SvgXmlCodec(createShapeRegistry()).decode(text), /unknown attribute: id/);
 });
 
 test('Phase 1 malformed XML still reports its established error', async () => {
   const text = await asset('incomplete.svg');
-  assert.throws(() => new SvgXmlCodec(new ShapeFactory()).decode(text), { name: 'EditorError', message: 'invalid SVG XML' });
+  assert.throws(() => new SvgXmlCodec(createShapeRegistry()).decode(text), { name: 'EditorError', message: 'invalid SVG XML' });
 });

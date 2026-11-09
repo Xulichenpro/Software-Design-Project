@@ -5,14 +5,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { SvgXmlCodec } from '../../src/infrastructure/svg/SvgXmlCodec.js';
 import { NodeFileGateway } from '../../src/infrastructure/files/NodeFileGateway.js';
-import { ShapeFactory } from '../../src/domain/factory/ShapeFactory.js';
-import { QueryReceiver } from '../../src/application/receivers/QueryReceiver.js';
+import { createQueryReceiver, createShapeRegistry } from '../helpers/builtins.js';
 
-const codec = new SvgXmlCodec(new ShapeFactory());
+const codec = new SvgXmlCodec(createShapeRegistry());
 test('real XML round-trip escapes text/styles, nested shapes and absent styles', () => {
   const imported = codec.decode('<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg" width="400" height="300" viewBox="0 0 400 300"><g id="g" fill="a&amp;b"><rect id="r" x="1" y="2" width="3" height="4"/><circle id="c" cx="1" cy="2" r="3"/><ellipse id="e" cx="1" cy="2" rx="3" ry="4"/><line id="l" x1="1" y1="2" x2="3" y2="4"/><text id="t" x="1" y="2">a &lt; b &amp; "c"</text></g></svg>');
   const text = codec.encode(imported.tree); assert.match(text, /a &lt; b &amp;/);
-  assert.deepEqual(new QueryReceiver(codec.decode(text).tree).tree().lines, new QueryReceiver(imported.tree).tree().lines);
+  assert.deepEqual(createQueryReceiver(codec.decode(text).tree).tree().lines, createQueryReceiver(imported.tree).tree().lines);
   assert.equal(imported.tree.findShape('r').getAttribute('fill'), undefined);
 });
 
@@ -56,4 +55,12 @@ test('XML round-trip preserves referenced carriage returns in text and whitespac
   const again = codec.decode(codec.encode(tree)).tree;
   assert.equal(again.findShape('t').getAttribute('text'),tree.findShape('t').getAttribute('text'));
   assert.equal(again.findShape('t').getAttribute('fill'),tree.findShape('t').getAttribute('fill'));
+});
+
+test('registry-based readback degrades an unknown data-kind to the SVG tag registration', () => {
+  const imported = codec.decode('<svg width="10" height="20"><g id="group" data-kind="box"><rect id="inside" width="1" height="1"/></g></svg>');
+  const group = imported.tree.findShape('group');
+  assert.equal(group.tag, 'g');
+  assert.equal(group.kind, 'g');
+  assert.equal(imported.tree.findShape('inside').parent, group);
 });

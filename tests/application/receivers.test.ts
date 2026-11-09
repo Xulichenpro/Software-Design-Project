@@ -1,26 +1,13 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ShapeTree } from '../../src/domain/tree/ShapeTree.js';
-import { ShapeFactory } from '../../src/domain/factory/ShapeFactory.js';
-import { ShapeEditorReceiver } from '../../src/application/receivers/ShapeEditorReceiver.js';
-import { DocumentReceiver } from '../../src/application/receivers/DocumentReceiver.js';
-import { QueryReceiver } from '../../src/application/receivers/QueryReceiver.js';
-import { SvgXmlCodec } from '../../src/infrastructure/svg/SvgXmlCodec.js';
-import type { FileGateway } from '../../src/application/contracts/FileGateway.js';
+import { createHelpCommands, createReceiverEnvironment, MemoryFiles } from '../helpers/builtins.js';
 
-class MemoryFiles implements FileGateway {
-  files = new Map<string, string>();
-  failWrite = false;
-  async read(path: string) { const text = this.files.get(path); if (text === undefined) throw new Error('missing'); return text; }
-  async write(path: string, text: string) { if (this.failWrite) throw new Error('failed'); this.files.set(path, text); }
-}
 function setup() {
-  const tree = new ShapeTree(); const files = new MemoryFiles();
-  const editor = new ShapeEditorReceiver(tree, new ShapeFactory());
-  const document = new DocumentReceiver(tree, new SvgXmlCodec(new ShapeFactory()), files);
-  return { tree, files, editor, document, query: new QueryReceiver(tree) };
+  const files = new MemoryFiles();
+  const env = createReceiverEnvironment({ initialized: false, files, commands: createHelpCommands() });
+  return { tree: env.tree, files, editor: env.editor, document: env.document, query: env.query, shapes: env.shapes };
 }
-function ids(tree: ShapeTree, parentId?: string) { return tree.getContainer(parentId).children.items.map(s => s.id); }
+function ids(tree: ReturnType<typeof setup>['tree'], parentId?: string) { return tree.getContainer(parentId).children.items.map(shape => shape.id); }
 
 test('all receivers share initialization and replacement, while help works without a document', async () => {
   const { tree, files, editor, document, query } = setup();
@@ -48,7 +35,7 @@ test('move, scale and attribute records apply forward/inverse parameters through
   editor.move(move.record.forward);
   const scale = editor.scale({ id: 'r', factor: 3 }); editor.scale(scale.record.inverse);
   assert.ok(Math.abs(Number(tree.findShape('r').getAttribute('width')) - 3) < 1e-12);
-  const attr = editor.setAttribute({ id: 'r', name: 'fill', value: 'red' });
+  const attr = editor.setAttribute({ id: 'r', name: 'fill', value: 'red', quoted: false });
   editor.setAttribute(attr.record.inverse); assert.equal(tree.findShape('r').getAttribute('fill'), undefined);
   editor.setAttribute(attr.record.forward); assert.equal(tree.findShape('r').getAttribute('fill'), 'red');
 });
@@ -129,12 +116,12 @@ test('scale rejects an infinite reciprocal before editing and records are immuta
 });
 
 test('invalid domain structure plans preserve parents, order and index atomically', () => {
-  const { editor, document, tree, query } = setup(); document.initialize();
+  const { editor, document, tree, query, shapes } = setup(); document.initialize();
   editor.create('g', 'a', []); editor.create('g', 'b', []);
   const a = tree.findShape('a'); const b = tree.findShape('b'); const before = query.tree().lines;
   assert.throws(() => tree.editStructure({ placements: [{ shape: a, parent: tree.root, index: 99 }, { shape: b, index: 0 }] }));
   assert.deepEqual(query.tree().lines, before); assert.equal(a.parent, tree.root); assert.equal(tree.findShape('b'), b);
-  const duplicate = new ShapeFactory().createFromArguments('g', 'a', []);
+  const duplicate = shapes.createFromArguments('g', 'a', []);
   assert.throws(() => tree.editStructure({ placements: [{ shape: duplicate, parent: tree.root, index: 0 }] }), /id already exists/);
   assert.deepEqual(query.tree().lines, before);
 });
@@ -147,6 +134,6 @@ test('receiver feedback follows leaf/group movement, quoted text and scale error
   assert.deepEqual(moved.result.lines, ['rect#r moved to (4,6)']);
   assert.deepEqual(editor.move(moved.record.inverse).result.lines, ['rect#r moved back to (1,2)']);
   assert.deepEqual(editor.move({ id: 'g', dx: 3, dy: 4 }).result.lines, ['g#g moved by (3,4)']);
-  assert.deepEqual(editor.setAttribute({ id: 't', name: 'text', value: 'new title' }).result.lines, ['text#t updated: text="new title"']);
+  assert.deepEqual(editor.setAttribute({ id: 't', name: 'text', value: 'new title', quoted: true }).result.lines, ['text#t updated: text="new title"']);
   assert.throws(() => editor.scale({ id: 'r', factor: 0 }), { message: 'scale factor must be positive' });
 });
