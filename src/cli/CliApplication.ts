@@ -18,11 +18,9 @@ export class CliApplication {
   async run(): Promise<void> {
     try {
       this.terminal.writeLine("svg-editor 0.1 — type 'help' for commands");
-      let pending: Promise<string | undefined> | undefined;
       while (true) {
-        const line = pending ? await pending : await this.terminal.readLine('svg> ');
+        const line = await this.terminal.readLine('svg> ');
         if (line === undefined) return;
-        pending = this.terminal.readLine('svg> ');
         try {
           const input = this.parser.parse(line);
           if (input) {
