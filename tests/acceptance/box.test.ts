@@ -13,6 +13,7 @@ const entry = fileURLToPath(new URL('../../src/bootstrap/main.ts', import.meta.u
 const tsxLoader = pathToFileURL(join(root, 'node_modules', 'tsx', 'dist', 'loader.mjs')).href;
 const rootConfig = join(root, 'plugins.config.json');
 const noPluginsConfig = fileURLToPath(new URL('../fixtures/no-plugins.config.json', import.meta.url));
+const boxPluginsConfig = fileURLToPath(new URL('../fixtures/box-plugins.config.json', import.meta.url));
 const banner = "svg-editor 0.1 — type 'help' for commands";
 
 interface CliOptions {
@@ -82,7 +83,7 @@ test('the Phase 1 section 6.1 version B box session renders the fixed transcript
   const storage = await temporaryDirectory('svg-box-storage-');
   const saved = join(storage, 'flowchart-box.svg');
   try {
-    const result = await runCli(boxSession(saved), { cwd: directory });
+    const result = await runCli(boxSession(saved), { cwd: directory, config: boxPluginsConfig });
     assert.equal(result.code, 0, result.err);
     assert.equal(result.err, '');
     const lines = renderedLines(result.out);
@@ -185,7 +186,7 @@ test('a saved box SVG degrades to a plain g without the box plugin and restores 
   }
 });
 
-test('an empty plugin config matches the Phase 1 baseline and a box-free session is unchanged by the default assembly', async () => {
+test('an empty plugin config matches the Phase 1 baseline and a box-free session is unchanged by the box plugin assembly', async () => {
   const directory = await temporaryDirectory('svg-box-cwd-');
   try {
     const session = [
@@ -212,9 +213,9 @@ test('an empty plugin config matches the Phase 1 baseline and a box-free session
     assert.equal(baseline.err, '');
     assert.deepEqual(renderedLines(baseline.out), expected);
 
-    const defaultAssembly = await runCli(session, { cwd: directory });
+    const defaultAssembly = await runCli(session, { cwd: directory, config: boxPluginsConfig });
     assert.equal(defaultAssembly.code, 0, defaultAssembly.err);
-    assert.equal(defaultAssembly.out, baseline.out, 'box must not change a session that never uses it');
+    assert.equal(defaultAssembly.out, baseline.out, 'the box plugin must not change a session that never uses it');
   } finally {
     await rm(directory, { recursive: true, force: true });
   }
