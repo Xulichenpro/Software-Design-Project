@@ -106,10 +106,10 @@ export class PluginHost {
       attributes: [...staged.attributes.keys()],
       decorators: [...staged.decorators.keys()],
     };
-    const mismatch = categories.some(category => !sameNames(declared[category], registered[category]));
+    const mismatch = !declared || categories.some(category => !sameNames(declared[category], registered[category]));
     if (mismatch) {
       this.#error(`plugin manifest mismatch: ${manifest.name} ` +
-        `(declared: ${formatNames(declared)}, registered: ${formatNames(registered)})`);
+        `(declared: ${declared ? formatNames(declared) : 'invalid'}, registered: ${formatNames(registered)})`);
       return;
     }
     if (internalDuplicate) {
@@ -130,13 +130,18 @@ export class PluginHost {
     for (const [name, value] of staged.decorators) this.#accepted.decorators.set(name, value);
   }
 
-  #declared(manifest: PluginManifest): Record<Category, readonly string[]> {
-    return {
-      shapes: manifest.contributes?.shapes ?? [],
-      commands: manifest.contributes?.commands ?? [],
-      attributes: manifest.contributes?.attributes ?? [],
-      decorators: manifest.contributes?.decorators ?? [],
-    };
+  #declared(manifest: PluginManifest): Record<Category, readonly string[]> | undefined {
+    const contributes: unknown = manifest.contributes;
+    const declared: Record<Category, readonly string[]> = { shapes: [], commands: [], attributes: [], decorators: [] };
+    if (contributes === undefined) return declared;
+    if (typeof contributes !== 'object' || contributes === null || Array.isArray(contributes)) return undefined;
+    for (const category of categories) {
+      const names = (contributes as Record<string, unknown>)[category];
+      if (names === undefined) continue;
+      if (!Array.isArray(names) || names.some(name => typeof name !== 'string' || !name.trim())) return undefined;
+      declared[category] = names;
+    }
+    return declared;
   }
 
   #isDuplicate(category: Category, name: string): boolean {

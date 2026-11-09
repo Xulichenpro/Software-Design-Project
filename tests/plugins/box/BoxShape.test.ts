@@ -51,6 +51,13 @@ test('create rejects missing or non-numeric template parameters without inventin
   assert.throws(() => registry.createFromArguments('box', 'n1', ['120', '100', 'wide', '60', '开始'], [...boxQuoted]));
 });
 
+test('create rejects an explicitly unquoted title while retaining internal creation without quote flags', () => {
+  const registry = createBoxRegistry();
+  assert.throws(() => registry.createFromArguments('box', 'n1', boxArguments(), [false, false, false, false, false]), /title must be quoted/);
+  assert.equal(registry.createFromArguments('box', 'internal', boxArguments()).descendants[1]?.getAttribute('text'), '开始');
+  assert.equal(registry.createFromArguments('box', 'quoted', boxArguments(), [...boxQuoted]).descendants[1]?.getAttribute('text'), '开始');
+});
+
 test('move traverses every direct child, including nested boxes and extra shapes, not just rect and text', () => {
   const box = standaloneBox('n1', 120, 100, 160, 60, 'outer');
   const inner = standaloneBox('n3', 200, 150, 100, 50, 'inner');

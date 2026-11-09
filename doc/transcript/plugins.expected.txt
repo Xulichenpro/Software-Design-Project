@@ -1,0 +1,60 @@
+svg-editor 0.1 — type 'help' for commands
+svg> svg> init [w] [h]
+read <file.svg>
+save [file.svg]
+canvas [w] [h]
+create <type> <id> [params…] [in <containerId>]
+delete <id>
+move <id> <dx> <dy>
+scale <id> <factor>
+set <id> <attr> <value>
+group <newGid> <id1> <id2>…
+ungroup <gid>
+addto <gid> <id>
+front <id>
+back <id>
+tree [id]
+show <id>
+help
+undo
+redo
+stats
+dir
+svg> [DIR]  docs
+[DIR]  plugins
+[FILE]  .hidden
+[FILE]  demo.svg
+svg> error: no document. use 'init' or 'read' first
+svg> canvas 800x600 created
+svg> g#group created
+svg> box#n1 created (g#n1 + rect#n1-rect + text#n1-label) in g#group
+svg> circle#dot created
+svg> box#n1 fill propagated to n1-rect
+svg> box#n1 label updated: "处理数据"
+svg> rect: 1  text: 1  circle: 1  (total 3, containers 2)
+svg> svg (800x600) *
+├── g#group *
+│   └── g#n1 (box) *
+│       ├── rect#n1-rect  x=120 y=100 w=160 h=60  fill=#f5a623 *
+│       └── text#n1-label  (140,135) "处理数据" *
+└── circle#dot  cx=300 cy=100 r=10 *
+svg> saved to ../output/plugins.svg (5 elements)
+svg> g#group moved to front
+svg> svg (800x600) *
+├── circle#dot  cx=300 cy=100 r=10 *
+└── g#group *
+    └── g#n1 (box)
+        ├── rect#n1-rect  x=120 y=100 w=160 h=60  fill=#f5a623
+        └── text#n1-label  (140,135) "处理数据"
+svg> g#group order restored
+svg> svg (800x600) *
+├── g#group *
+│   └── g#n1 (box)
+│       ├── rect#n1-rect  x=120 y=100 w=160 h=60  fill=#f5a623
+│       └── text#n1-label  (140,135) "处理数据"
+└── circle#dot  cx=300 cy=100 r=10 *
+svg> [DIR]  docs
+[DIR]  plugins
+[FILE]  .hidden
+[FILE]  demo.svg
+svg> 

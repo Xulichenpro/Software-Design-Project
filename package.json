@@ -4,7 +4,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "npm run test:phase1 && npm run test:plugin",
+    "test": "npm run test:phase1 && npm run test:cli:plugins && npm run test:plugin",
     "test:all": "npm run test:phase1 && npm run test:plugin && npm run test:cli:plugins",
     "test:phase1": "node --import tsx --test tests/acceptance/*.test.ts tests/application/**/*.test.ts tests/cli/*.test.ts tests/domain/*.test.ts tests/infrastructure/**/*.test.ts tests/metrics/*.test.ts",
     "test:plugin": "npm run test:plugin:unit && npm run test:plugin:host",

@@ -80,6 +80,60 @@ test('manifest mismatch is reported and the whole plugin is discarded', async ()
   assert.equal(pluginHost.contributions.commands.size, 0);
 });
 
+test('malformed manifest name lists discard every staged category and allow later plugins', async () => {
+  for (const invalid of [{}, 'probe', null, [42], ['']]) {
+    for (const category of ['shapes', 'commands', 'attributes', 'decorators'] as const) {
+      const { host: pluginHost, terminal } = host();
+      const handler = new HostHandler();
+      const decorator = new HostDecorator();
+      const contributes = {
+        shapes: ['rect'], commands: ['probe'], attributes: [handler.name], decorators: [decorator.name],
+        [category]: invalid,
+      } as unknown as PluginManifest['contributes'];
+      await pluginHost.load(registeringModule({
+        shapes: category === 'shapes' && invalid === null ? [] : [RectShape],
+        commands: category === 'commands' && invalid === null ? [] : ['probe'],
+        attributes: category === 'attributes' && invalid === null ? [] : [handler],
+        decorators: category === 'decorators' && invalid === null ? [] : [decorator],
+      }), manifest('@test/malformed', contributes));
+      assert.equal(terminal.errors.length, 1, category);
+      assert.match(terminal.errors[0]!, /^error: plugin manifest mismatch: @test\/malformed \(declared: .*, registered: .*\)$/);
+      for (const accepted of Object.values(pluginHost.contributions)) assert.equal(accepted.size, 0, category);
+      await pluginHost.load(registeringModule({ commands: ['probe'] }), manifest('@test/later', { commands: ['probe'] }));
+      assert.equal(pluginHost.contributions.commands.has('probe'), true, category);
+    }
+  }
+});
+
+test('an iterable string is not accepted as a declaration of its individual characters', async () => {
+  const { host: pluginHost, terminal } = host();
+  await pluginHost.load(registeringModule({ commands: ['p', 'i', 'n', 'g'] }),
+    manifest('@test/string', { commands: 'ping' } as unknown as PluginManifest['contributes']));
+  assert.equal(terminal.errors.length, 1);
+  assert.match(terminal.errors[0]!, /^error: plugin manifest mismatch: @test\/string/);
+  assert.equal(pluginHost.contributions.commands.size, 0);
+});
+
+test('invalid declaration names cannot be accepted by matching invalid registration names', async () => {
+  for (const name of [42, '']) {
+    const { host: pluginHost, terminal } = host();
+    await pluginHost.load(registeringModule({ commands: [name as string] }),
+      manifest('@test/name', { commands: [name] } as unknown as PluginManifest['contributes']));
+    assert.equal(terminal.errors.length, 1);
+    assert.match(terminal.errors[0]!, /^error: plugin manifest mismatch: @test\/name/);
+    assert.equal(pluginHost.contributions.commands.size, 0);
+  }
+});
+
+test('a malformed contributes container is rejected even when activation registers nothing', async () => {
+  for (const invalid of [null, [], 'commands', 42]) {
+    const { host: pluginHost, terminal } = host();
+    await pluginHost.load(registeringModule({}), manifest('@test/malformed', invalid as unknown as PluginManifest['contributes']));
+    assert.equal(terminal.errors.length, 1);
+    assert.match(terminal.errors[0]!, /^error: plugin manifest mismatch: @test\/malformed \(declared: .*, registered: .*\)$/);
+  }
+});
+
 test('a plugin that registers an undeclared category also fails manifest comparison', async () => {
   const { host: pluginHost, terminal } = host();
   await pluginHost.load(registeringModule({ commands: ['ping'] }), manifest('@test/undeclared', {}));

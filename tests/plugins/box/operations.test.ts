@@ -6,6 +6,9 @@ import { ScaleCommand } from '../../../src/application/commands/editing/ScaleCom
 import { SetAttributeCommand } from '../../../src/application/commands/editing/SetAttributeCommand.js';
 import { UndoCommand } from '../../../src/application/commands/history/UndoCommand.js';
 import { RedoCommand } from '../../../src/application/commands/history/RedoCommand.js';
+import { CommandLineParser } from '../../../src/cli/CommandLineParser.js';
+import { createBuiltinContributions } from '../../../src/bootstrap/builtinContributions.js';
+import { createQueryReceiver } from '../../helpers/builtins.js';
 import {
   RecordingObserver, addBox, allShapeIds, boxArguments, boxQuoted, childIds,
   createBoxEnvironment, createExecutor,
@@ -99,4 +102,29 @@ test('create box rejects a colliding derived part id before creating anything', 
   assert.throws(() => environment.tree.findShape('n1-label'));
   assert.equal(observer.events.length, 0);
   await assert.rejects(executor.execute(new UndoCommand()), /nothing to undo/);
+});
+
+test('the create command forwards parsed box title quotes and rejects unquoted titles without a commit', async () => {
+  const environment = createBoxEnvironment();
+  const observer = new RecordingObserver();
+  const executor = createExecutor(environment, observer);
+  const parser = new CommandLineParser();
+  const registration = createBuiltinContributions({
+    editor: environment.editor,
+    document: environment.document,
+    query: createQueryReceiver(environment.tree),
+  }).commands.get('create')!;
+  const before = allShapeIds(environment.tree);
+  const unquoted = parser.parse('create box invalid 120 100 160 60 title')!;
+  await assert.rejects(executor.execute(registration.create(unquoted.args, { document: environment.tree })), /title must be quoted/);
+  assert.deepEqual(allShapeIds(environment.tree), before);
+  assert.equal(observer.events.length, 0);
+  await assert.rejects(executor.execute(new UndoCommand()), /nothing to undo/);
+
+  const quoted = parser.parse('create box valid 120 100 160 60 "title"')!;
+  await executor.execute(registration.create(quoted.args, { document: environment.tree }));
+  assert.equal(environment.tree.findShape('valid-label').getAttribute('text'), 'title');
+  assert.equal(observer.events.length, 1);
+  await executor.execute(new UndoCommand());
+  assert.deepEqual(allShapeIds(environment.tree), before);
 });

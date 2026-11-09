@@ -57,4 +57,4 @@ AGENTS 图只画了 `DirCommand --> DirectoryReader --> NodeDirectoryAdapter`，
 
 - `tests/plugins/dir/*`：混合、空目录、隐藏项、排序、失败、符号链接、真实临时目录。
 - `tests/acceptance/*`：未 init 可用、有文档时成功/失败不改历史。
-- `scripts/verify-ab.mjs`：固定临时目录下 A/B 输出逐字节一致，日志在目录外。
+- `tests/acceptance/transcripts.test.ts`：固定临时目录下 A/B 输出逐字节一致，日志在目录外。

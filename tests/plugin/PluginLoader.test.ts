@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { cp, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { cp, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PluginHost } from '../../src/bootstrap/PluginHost.js';
 import { PluginLoader } from '../../src/bootstrap/PluginLoader.js';
@@ -71,6 +71,58 @@ test('relative modules are resolved from the directory containing the config fil
     await loader.load(configPath);
     assert.deepEqual(terminal.errors, []);
     assert.equal(host.contributions.commands.has('ping'), true);
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('a bare npm package resolves from a relative config path', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'svg-loader-package-'));
+  try {
+    const packageName = '@fixture/generated-plugin';
+    const packageDir = join(workspace, 'node_modules', packageName);
+    await mkdir(packageDir, { recursive: true });
+    await writeFile(join(packageDir, 'package.json'), JSON.stringify({
+      name: packageName, type: 'module', main: './index.js', contributes: { commands: ['package-ping'] },
+    }));
+    await writeFile(join(packageDir, 'index.js'), `export default {
+      activate(context) {
+        context.registerCommand({ name: 'package-ping', help: 'package-ping', create() { throw new Error('unused'); } });
+      }
+    };`);
+    const configPath = join(workspace, 'plugins.config.json');
+    await writeFile(configPath, JSON.stringify({ plugins: [{ module: packageName }] }));
+    const { host, loader, terminal } = setup();
+    await loader.load(relative(process.cwd(), configPath));
+    assert.deepEqual(terminal.errors, []);
+    assert.equal(host.contributions.commands.has('package-ping'), true);
+  } finally {
+    await rm(workspace, { recursive: true, force: true });
+  }
+});
+
+test('malformed manifest lists roll back their plugins and later plugins still load', async () => {
+  const workspace = await mkdtemp(join(tmpdir(), 'svg-loader-manifest-'));
+  try {
+    for (const [name, contributes] of [
+      ['bad-list', { commands: {} }], ['bad-contributes', 'commands'],
+    ] as const) {
+      const packageDir = join(workspace, name);
+      await cp(join(loaderFixtures, 'valid'), packageDir, { recursive: true });
+      await writeFile(join(packageDir, 'package.json'), JSON.stringify({ name, contributes }));
+      if (name === 'bad-contributes') await writeFile(join(packageDir, 'src', 'index.ts'), 'export default { activate() {} };');
+    }
+    await cp(join(loaderFixtures, 'valid'), join(workspace, 'valid'), { recursive: true });
+    const configPath = join(workspace, 'plugins.config.json');
+    await writeFile(configPath, JSON.stringify({ plugins: [
+      { module: './bad-list' }, { module: './bad-contributes' }, { module: './valid' },
+    ] }));
+    const { host, loader, terminal } = setup();
+    await loader.load(configPath);
+    assert.equal(terminal.errors.length, 2);
+    assert.match(terminal.errors[0]!, /^error: plugin manifest mismatch: bad-list \(declared: .*, registered: .*\)$/);
+    assert.match(terminal.errors[1]!, /^error: plugin manifest mismatch: bad-contributes \(declared: .*, registered: .*\)$/);
+    assert.deepEqual([...host.contributions.commands.keys()], ['ping']);
   } finally {
     await rm(workspace, { recursive: true, force: true });
   }

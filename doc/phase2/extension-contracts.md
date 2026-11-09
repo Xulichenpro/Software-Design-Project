@@ -281,7 +281,8 @@ export abstract class TreeDecorator {
 ### 3.5 文档视图与拓扑
 
 ```ts
-// src/application/contracts/DocumentView.ts
+// src/domain/tree/DocumentView.ts
+// （src/application/contracts/DocumentView.ts 仅 re-export，保持领域不依赖 application）
 export interface DocumentView {
   requireInitialized(): void;
   readonly root: ShapeContainer;
@@ -410,4 +411,4 @@ git diff C^ C -- src/ plugins/ ':(exclude)plugins/<新增插件包>' ':(exclude)
 
 每阶段测试先红；实现后必须运行：
 `npm run test:phase1`、相关插件测试、`npm run typecheck`、`npm run build`。
-失败补 fix commit；不得移动已打 tag。
+失败补 fix commit；默认不得移动已打 tag。本轮用户明确授权撤换旧 `p2`，例外记录见 [verification.md](verification.md)。

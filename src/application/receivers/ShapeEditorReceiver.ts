@@ -108,8 +108,25 @@ export class ShapeEditorReceiver {
     return `${shape.label} created (${[shape.describe().heading, ...children.map(child => child.label)].join(' + ')})`;
   }
   private replayAttributePatch(patch: AttributeEditParameters): CommandResult {
-    for (const write of patch.writes) this.tree.findShape(write.shapeId).setAttribute(write.name, write.value);
-    return { lines: [...patch.lines] };
+    const applied: { shape: Shape; name: string; before: string | undefined }[] = [];
+    try {
+      for (const write of patch.writes) {
+        const shape = this.tree.findShape(write.shapeId);
+        const before = shape.getAttribute(write.name);
+        shape.setAttribute(write.name, write.value);
+        applied.push({ shape, name: write.name, before });
+      }
+      return { lines: [...patch.lines] };
+    } catch (error) {
+      for (const write of applied.reverse()) {
+        try {
+          write.shape.setAttribute(write.name, write.before);
+        } catch {
+          // Keep restoring the remaining writes; the original failure wins.
+        }
+      }
+      throw error;
+    }
   }
   private requireAvailableId(id: string) {
     if (this.tree.shapes.some(shape => shape.id === id)) throw new Error(`id already exists: ${id}`);

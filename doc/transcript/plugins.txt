@@ -1,0 +1,18 @@
+# Fixed cwd: docs/, plugins/, .hidden and demo.svg. Output files are siblings.
+help
+dir
+stats
+init 800 600
+create g group
+create box n1 120 100 160 60 "开始" in group
+create circle dot 300 100 10
+set n1 fill #f5a623
+set n1 label "处理数据"
+stats
+tree
+save ../output/plugins.svg
+front group
+tree
+undo
+tree
+dir

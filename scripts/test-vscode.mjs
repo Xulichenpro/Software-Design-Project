@@ -5,6 +5,10 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+// Some harnesses set ELECTRON_RUN_AS_NODE=1, which turns Code.exe into a Node
+// interpreter and makes VS Code reject its normal launch arguments. VS Code
+// host tests must launch the real Electron application.
+delete process.env.ELECTRON_RUN_AS_NODE;
 const tests = join(root, '.vscode-test', 'suite.cjs');
 await build({
   entryPoints: [join(root, 'extensions/vscode-svg/tests/suite.ts')],
