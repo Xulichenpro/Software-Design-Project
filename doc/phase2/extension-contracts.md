@@ -385,8 +385,8 @@ ApplicationBootstrap
 - 必查：
 
 ```bash
-git diff C^ C -- src/ plugins/ ':(exclude)plugins/<新增插件包>'
-# 输出必须为空
+git diff C^ C -- src/ plugins/ ':(exclude)plugins/<新增插件包>' ':(exclude)src/bootstrap/codeAssembly.ts'
+# 输出必须为空；装配层 codeAssembly 与 plugins.config.json 不计入内核差异
 ```
 
 - A（代码装配）：新增插件包 + 修改 `src/bootstrap/codeAssembly.ts`；不得修改内核/加载器/

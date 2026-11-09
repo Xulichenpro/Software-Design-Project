@@ -22,13 +22,12 @@ npm run test:plugin:host
 
 ```bash
 git diff --name-status C^ C
-git diff C^ C -- src/ plugins/ ":(exclude)$N"
+git diff C^ C -- src/ plugins/ ":(exclude)$N" ":(exclude)src/bootstrap/codeAssembly.ts"
 ```
 
-- 第二条输出必须为空。
-- 第一条允许包含：`$N`、`src/bootstrap/codeAssembly.ts`、`plugins.config.json`、
-  测试、文档、`package.json`、锁文件。若出现其他 `src/` 或既有 `plugins/` 文件，
-  逐项说明；无法说明即失败。
+- 第二条输出必须为空。装配层（A 的 `src/bootstrap/codeAssembly.ts`、B 的
+  `plugins.config.json`）不计入内核差异，因此可以从判据中排除；如果排除装配文件后
+  仍有 `src/` 或既有 `plugins/` 变化，逐项说明；无法说明即失败。
 - 路径必须实际存在；Git 对不存在路径可能返回空结果，空输出本身不构成证明。
 - 装配层变化不计入零差异判据；但 A 仍应只改一个顶层装配文件，B 不应改已有运行代码。
 
