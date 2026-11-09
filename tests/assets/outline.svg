@@ -1,0 +1,13 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" id="canvas" viewBox="0 0 400 200" data-note="outline only">
+  <defs>
+    <linearGradient id="paint"><stop offset="0" stop-color="red"/></linearGradient>
+  </defs>
+  <g id="flow">
+    <rect id="start" x="1" y="2" width="30" height="40" data-note="keep this attribute"/>
+    <g id="nested">
+      <path d="M0 0 L10 10"/>
+      <text>开始</text>
+    </g>
+  </g>
+</svg>
