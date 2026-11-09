@@ -1,0 +1,9 @@
+{
+  "name": "@svgframe/plugin-stats",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "contributes": {
+    "commands": ["stats"]
+  }
+}

@@ -8,10 +8,11 @@ import { fileURLToPath } from 'node:url';
 import { ApplicationBootstrap } from '../../src/bootstrap/ApplicationBootstrap.js';
 import type { Terminal } from '../../src/application/contracts/Terminal.js';
 import { SvgXmlCodec } from '../../src/infrastructure/svg/SvgXmlCodec.js';
-import { ShapeFactory } from '../../src/domain/factory/ShapeFactory.js';
+import { createShapeRegistry } from '../helpers/builtins.js';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const entry=fileURLToPath(new URL('../../src/bootstrap/main.ts',import.meta.url));
+const noPluginsConfig=fileURLToPath(new URL('../fixtures/no-plugins.config.json',import.meta.url));
 function runScript(lines: readonly string[], npm=false): Promise<{code:number|null;out:string;err:string}> {
   const executable=npm && process.platform==='win32' ? process.env.ComSpec ?? 'cmd.exe' : npm ? 'npm' : process.execPath;
   const args=npm ? process.platform==='win32' ? ['/d','/s','/c','npm run cli'] : ['run','cli'] : ['--import','tsx',entry];
@@ -25,7 +26,7 @@ function runScript(lines: readonly string[], npm=false): Promise<{code:number|nu
     child.stdin.end(lines.join('\n'));
   });
 }
-function decode(text:string){return new SvgXmlCodec(new ShapeFactory()).decode(text).tree;}
+function decode(text:string){return new SvgXmlCodec(createShapeRegistry()).decode(text).tree;}
 
 test('bootstrap supports injected terminal while composing shared receivers and real IO', async () => {
   const lines=['init','create g parent','create rect r 1 2 3 4 in parent','move parent 10 20','show r','undo','show r'];
@@ -105,4 +106,48 @@ test('real npm run cli consumes all piped lines, recovers from errors and execut
     assert.ok(result.out.includes('g#after created')); assert.match(result.out,/└── g#after/);
     const tree=decode(await readFile(path,'utf8')); assert.equal(tree.shapes.length,1); assert.equal(tree.findShape('alive').getAttribute('x'),'1');
   } finally {await rm(dir,{recursive:true,force:true});}
+});
+
+// Phase 1 names 19 commands. The single `canvas` registration covers both the
+// no-argument query and the two-argument resize, which are asserted separately.
+const phase1CommandNames = ['init','read','save','canvas','create','delete','move','scale','set',
+  'group','ungroup','addto','front','back','tree','show','help','undo','redo'];
+
+test('empty plugin config exposes the complete Phase 1 command registry', async () => {
+  const output:string[]=[];
+  let index=0;
+  const scripted:Terminal={async readLine(){return ['help','stats','dir'][index++];},writeLine(text){output.push(text);},close(){}};
+  await new ApplicationBootstrap(scripted,undefined,noPluginsConfig).run();
+  assert.equal(output[0],"svg-editor 0.1 — type 'help' for commands");
+  const helpLines=output.filter(line => phase1CommandNames.some(name => line === name || line.startsWith(name + ' ')));
+  assert.equal(helpLines.length,phase1CommandNames.length);
+  assert.deepEqual(new Set(helpLines.map(line => line.split(' ')[0]!)),new Set(phase1CommandNames));
+  assert.deepEqual(output.filter(line => line.startsWith('error:')),
+    ['error: unknown command: stats','error: unknown command: dir']);
+});
+
+test('empty plugin config provides six shapes, canvas modes, create-in and set delegation', async () => {
+  const lines=['init 100 100',
+    'create rect r 1 2 3 4','create circle c 50 50 10','create ellipse e 10 20 5 6',
+    'create line l 1 2 3 4','create text t 10 20 "hello"','create g group',
+    'create g parent','create rect nested 5 6 7 8 in parent',
+    'canvas','canvas 200 300','set t text "new label"','set t text unquoted',
+    'set r width -1','set r width Infinity','set r fill','tree'];
+  const output:string[]=[]; let index=0;
+  const terminal:Terminal={async readLine(){return lines[index++];},writeLine(text){output.push(text);},close(){}};
+  await new ApplicationBootstrap(terminal,undefined,noPluginsConfig).run();
+  assert.equal(output[0],"svg-editor 0.1 — type 'help' for commands");
+  assert.ok(output.includes('canvas 100x100'));
+  assert.ok(output.includes('canvas resized to 200x300'));
+  assert.ok(output.includes('text#t updated: text="new label"'));
+  for (const heading of ['rect#r','circle#c','ellipse#e','line#l','text#t','g#group','g#parent','rect#nested']) {
+    assert.ok(output.some(line => line.includes(heading)),heading);
+  }
+  assert.ok(output.some(line => line.includes('rect#nested') && line.includes('x=5 y=6 w=7 h=8')));
+  assert.deepEqual(output.filter(line => line.startsWith('error:')),[
+    'error: text content must be quoted',
+    'error: width must be non-negative',
+    'error: width must be finite',
+    'error: invalid parameters for set',
+  ]);
 });

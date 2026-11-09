@@ -1,0 +1,10 @@
+{
+  "name": "@fixture/plugin-package-main",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "lib/main.ts",
+  "contributes": {
+    "commands": ["main"]
+  }
+}

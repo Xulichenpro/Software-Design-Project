@@ -1,11 +1,5 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ShapeTree } from '../../../src/domain/tree/ShapeTree.js';
-import { ShapeFactory } from '../../../src/domain/factory/ShapeFactory.js';
-import { ShapeEditorReceiver } from '../../../src/application/receivers/ShapeEditorReceiver.js';
-import { DocumentReceiver } from '../../../src/application/receivers/DocumentReceiver.js';
-import { QueryReceiver } from '../../../src/application/receivers/QueryReceiver.js';
-import { SvgXmlCodec } from '../../../src/infrastructure/svg/SvgXmlCodec.js';
 import { Command } from '../../../src/application/commands/base/Command.js';
 import { UndoableCommand } from '../../../src/application/commands/base/UndoableCommand.js';
 import { BarrierCommand } from '../../../src/application/commands/base/BarrierCommand.js';
@@ -31,24 +25,18 @@ import { HelpCommand } from '../../../src/application/commands/query/HelpCommand
 import { ShowCanvasCommand } from '../../../src/application/commands/query/ShowCanvasCommand.js';
 import { UndoCommand } from '../../../src/application/commands/history/UndoCommand.js';
 import { RedoCommand } from '../../../src/application/commands/history/RedoCommand.js';
-import type { FileGateway } from '../../../src/application/contracts/FileGateway.js';
+import { createHelpCommands, createReceiverEnvironment, MemoryFiles } from '../../helpers/builtins.js';
 
-class MemoryFiles implements FileGateway {
-  files = new Map<string, string>();
-  fail = false;
-  async read(path: string) { const text = this.files.get(path); if (text === undefined) throw new Error('missing'); return text; }
-  async write(path: string, content: string) { if (this.fail) throw new Error('write failed'); this.files.set(path, content); }
-}
 function setup(initialize = true) {
-  const tree = new ShapeTree(); const editor = new ShapeEditorReceiver(tree, new ShapeFactory());
-  const query = new QueryReceiver(tree); const files = new MemoryFiles();
-  const document = new DocumentReceiver(tree, new SvgXmlCodec(new ShapeFactory()), files);
+  const files = new MemoryFiles();
+  const env = createReceiverEnvironment({ initialized: false, files, commands: createHelpCommands() });
   if (initialize) {
-    document.initialize(); editor.create('g', 'p', []); editor.create('g', 'g', [], 'p');
-    editor.create('rect', 'a', ['1', '2', '3', '4'], 'g'); editor.create('circle', 'b', ['5', '6', '7'], 'g');
-    editor.create('g', 'sibling', [], 'p'); editor.create('g', 'tail', []);
+    env.document.initialize();
+    env.editor.create('g', 'p', []); env.editor.create('g', 'g', [], 'p');
+    env.editor.create('rect', 'a', ['1', '2', '3', '4'], 'g'); env.editor.create('circle', 'b', ['5', '6', '7'], 'g');
+    env.editor.create('g', 'sibling', [], 'p'); env.editor.create('g', 'tail', []);
   }
-  return { tree, editor, query, files, document };
+  return { tree: env.tree, editor: env.editor, query: env.query, files, document: env.document };
 }
 type Fixture = ReturnType<typeof setup>;
 const editing: readonly [string, (f: Fixture) => UndoableCommand][] = [
@@ -56,7 +44,7 @@ const editing: readonly [string, (f: Fixture) => UndoableCommand][] = [
   ['DeleteCommand', f => new DeleteCommand(f.editor, 'g')],
   ['MoveCommand', f => new MoveCommand(f.editor, { id: 'g', dx: 3, dy: 4 })],
   ['ScaleCommand', f => new ScaleCommand(f.editor, { id: 'g', factor: 2 })],
-  ['SetAttributeCommand', f => new SetAttributeCommand(f.editor, { id: 'a', name: 'fill', value: 'red' })],
+  ['SetAttributeCommand', f => new SetAttributeCommand(f.editor, { id: 'a', name: 'fill', value: 'red', quoted: false })],
   ['GroupCommand', f => new GroupCommand(f.editor, 'joined', ['tail', 'a', 'b'])],
   ['UngroupCommand', f => new UngroupCommand(f.editor, 'g')],
   ['AddToCommand', f => new AddToCommand(f.editor, 'g', 'tail')],
@@ -78,7 +66,7 @@ for (const [name, make] of editing) test(`${name} executes and repeats inverse/f
 });
 
 test('set retains original absent style across redo and repeat execute', async () => {
-  const f = setup(); const command = new SetAttributeCommand(f.editor, { id: 'a', name: 'fill', value: 'red' });
+  const f = setup(); const command = new SetAttributeCommand(f.editor, { id: 'a', name: 'fill', value: 'red', quoted: false });
   await command.execute(); await command.undo(); f.tree.findShape('a').setAttribute('fill', 'blue');
   await command.redo(); await command.undo(); assert.equal(f.tree.findShape('a').getAttribute('fill'), undefined);
   f.tree.findShape('a').setAttribute('fill', 'green'); await command.execute(); await command.undo();
@@ -90,7 +78,7 @@ test('failed first execute can retry; failed undo or redo keeps its original rec
   assert.throws(() => command.execute(), /id already exists/); f.editor.delete('tail');
   await command.execute(); const shape = f.tree.findShape('tail'); await command.undo(); await command.redo();
   assert.equal(f.tree.findShape('tail'), shape);
-  const set = new SetAttributeCommand(f.editor, { id: 'a', name: 'fill', value: 'red' }); await set.execute();
+  const set = new SetAttributeCommand(f.editor, { id: 'a', name: 'fill', value: 'red', quoted: false }); await set.execute();
   const deleted = f.editor.delete('a'); assert.throws(() => set.undo(), /no such shape/);
   f.editor.editStructure(deleted.record.inverse); await set.undo(); assert.equal(f.tree.findShape('a').getAttribute('fill'), undefined);
   const again = f.editor.delete('a'); assert.throws(() => set.redo(), /no such shape/);
@@ -122,7 +110,7 @@ test('ReadCommand and SaveCommand await document IO, association and failures', 
   await read.execute(); assert.equal(f.tree.findShape('imported').tag, 'g');
   const save = new SaveCommand(f.document, 'out.svg'); assert.ok(save instanceof BarrierCommand);
   await save.execute(); assert.equal(f.document.associatedPath, 'out.svg'); assert.match(f.files.files.get('out.svg')!, /id="imported"/);
-  await new SaveCommand(f.document).execute(); f.files.fail = true;
+  await new SaveCommand(f.document).execute(); f.files.failWrite = true;
   await assert.rejects(new SaveCommand(f.document, 'bad.svg').execute(), /cannot write file/);
   assert.equal(f.document.associatedPath, 'out.svg'); await assert.rejects(new ReadCommand(f.document, 'missing.svg').execute(), /cannot read file/);
 });
@@ -145,7 +133,7 @@ test('UndoCommand and RedoCommand receive each target at execute time', async ()
   assert.ok(undo instanceof HistoryControlCommand); assert.ok(redo instanceof HistoryControlCommand);
   assert.equal(undo.getDirection(), 'undo'); assert.equal(redo.getDirection(), 'redo');
   const first = new MoveCommand(f.editor, { id: 'a', dx: 1, dy: 2 });
-  const second = new SetAttributeCommand(f.editor, { id: 'b', name: 'fill', value: 'blue' });
+  const second = new SetAttributeCommand(f.editor, { id: 'b', name: 'fill', value: 'blue', quoted: false });
   await first.execute(); await second.execute(); await undo.execute(second); await undo.execute(first);
   assert.equal(f.tree.findShape('a').getAttribute('x'), '1'); assert.equal(f.tree.findShape('b').getAttribute('fill'), undefined);
   await redo.execute(first); await redo.execute(second);

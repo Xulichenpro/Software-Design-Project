@@ -1,9 +1,9 @@
-import { Command } from './Command.js';
+import { PluginCommand } from './PluginCommand.js';
 import type { CommandResult } from '../../contracts/CommandResult.js';
 import type { EditRecord } from '../../records/EditRecord.js';
 import type { EditOutcome } from '../../receivers/EditOutcome.js';
 import { EditorError } from '../../contracts/EditorError.js';
-export abstract class UndoableCommand<TParameters = unknown> extends Command {
+export abstract class UndoableCommand<TParameters = unknown> extends PluginCommand<void> {
   #record: EditRecord<TParameters> | undefined;
   execute(): CommandResult {
     if (this.#record) return this.replay(this.#record.forward);

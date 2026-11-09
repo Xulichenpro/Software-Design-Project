@@ -1,0 +1,13 @@
+{
+  "name": "svg-outline",
+  "displayName": "SVG Outline and Badges",
+  "description": "Native SVG Outline navigation and Explorer file badges.",
+  "version": "0.1.0",
+  "publisher": "svg-cli",
+  "private": true,
+  "type": "module",
+  "engines": { "vscode": "^1.95.0" },
+  "categories": ["Other"],
+  "activationEvents": ["onStartupFinished"],
+  "main": "./dist/extension.cjs"
+}

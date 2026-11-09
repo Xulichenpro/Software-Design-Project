@@ -1,14 +1,15 @@
 import { ShapeTree } from '../../domain/tree/ShapeTree.js';
-import { ShapeFactory } from '../../domain/factory/ShapeFactory.js';
-import { GroupShape } from '../../domain/shapes/GroupShape.js';
+import { ShapeProvider } from '../../domain/shapes/ShapeProvider.js';
 import type { Shape } from '../../domain/shapes/Shape.js';
 import type { ShapeContainer } from '../../domain/tree/ShapeContainer.js';
 import type { ShapePlacement } from '../../domain/tree/TreeStructureParameters.js';
 import type { MoveParameters } from '../contracts/MoveParameters.js';
 import type { ScaleParameters } from '../contracts/ScaleParameters.js';
-import type { AttributeEditParameters } from '../contracts/AttributeEditParameters.js';
+import type { AttributeEditParameters, AttributeEditRequest } from '../contracts/AttributeEditParameters.js';
 import type { StructureEditParameters } from '../contracts/StructureEditParameters.js';
 import type { CommandResult } from '../contracts/CommandResult.js';
+import type { ShapeProviderRegistry } from '../registries/ShapeProviderRegistry.js';
+import type { AttributeService } from '../attributes/AttributeService.js';
 import { MoveEditRecord } from '../records/MoveEditRecord.js';
 import { ScaleEditRecord } from '../records/ScaleEditRecord.js';
 import { AttributeEditRecord } from '../records/AttributeEditRecord.js';
@@ -16,7 +17,11 @@ import { StructureEditRecord } from '../records/StructureEditRecord.js';
 import type { EditOutcome } from './EditOutcome.js';
 
 export class ShapeEditorReceiver {
-  constructor(private readonly tree: ShapeTree, private readonly factory: ShapeFactory) {}
+  constructor(
+    private readonly tree: ShapeTree,
+    private readonly shapes: ShapeProviderRegistry,
+    private readonly attributes: AttributeService,
+  ) {}
   move(parameters: MoveParameters): EditOutcome<MoveEditRecord> {
     const shape = this.tree.findShape(parameters.id);
     const record = new MoveEditRecord({ ...parameters }, { id: parameters.id, dx: -parameters.dx, dy: -parameters.dy, returning: !parameters.returning });
@@ -31,20 +36,21 @@ export class ShapeEditorReceiver {
     shape.scale(parameters.factor);
     return { record, result: { lines: [`${shape.label} scaled by ${parameters.factor}`] } };
   }
-  setAttribute(parameters: AttributeEditParameters): EditOutcome<AttributeEditRecord> {
-    const shape = this.tree.findShape(parameters.id);
-    const record = new AttributeEditRecord({ ...parameters }, { ...parameters, value: shape.getAttribute(parameters.name) });
-    shape.setAttribute(parameters.name, parameters.value);
-    return { record, result: { lines: [`${shape.label} updated: ${shape.attributeSummary(parameters.name, parameters.value)}`] } };
+  setAttribute(request: AttributeEditRequest): EditOutcome<AttributeEditRecord>;
+  setAttribute(patch: AttributeEditParameters): CommandResult;
+  setAttribute(parameters: AttributeEditRequest | AttributeEditParameters): EditOutcome<AttributeEditRecord> | CommandResult {
+    if ('writes' in parameters) return this.replayAttributePatch(parameters);
+    return this.attributes.setAttribute(parameters);
   }
   editStructure(parameters: StructureEditParameters): CommandResult {
     this.tree.editStructure({ placements: parameters.placements }); return { lines: [parameters.message] };
   }
   create(type: string, id: string, args: readonly string[], parentId?: string, quoted?: readonly boolean[]): EditOutcome<StructureEditRecord> {
     const parent = this.tree.getContainer(parentId); this.requireAvailableId(id);
-    const shape = this.factory.createFromArguments(type, id, args, quoted);
+    const shape = this.shapes.createFromArguments(type, id, args, quoted);
+    const created = this.createMessage(shape);
     return this.applyPlan([{ shape, parent, index: parent.children.items.length }],
-      `${shape.label} created${parentId ? ' in ' + parent.label : ''}`, `${shape.label} deleted`);
+      `${created}${parentId ? ' in ' + parent.label : ''}`, `${shape.label} deleted`);
   }
   delete(id: string): EditOutcome<StructureEditRecord> {
     const shape = this.tree.findShape(id);
@@ -64,22 +70,28 @@ export class ShapeEditorReceiver {
     const remaining = parent.children.items.filter(shape => !shapes.includes(shape));
     const originalIndex = parent.children.items.indexOf(first);
     const index = remaining.filter(shape => parent.children.items.indexOf(shape) < originalIndex).length;
-    const group = new GroupShape(id);
-    return this.applyPlan([{ shape: group, parent, index }, ...ordered.map((shape, index) => ({ shape, parent: group, index }))],
+    const group = this.shapes.createFromArguments('g', id, []);
+    const container = group.asContainer();
+    if (!container) throw new Error(`shape type g is not a container: ${id}`);
+    return this.applyPlan([{ shape: group, parent, index }, ...ordered.map((shape, index) => ({ shape, parent: container, index }))],
       `${group.label} created with ${shapes.length} children`, `${group.label} grouping undone`);
   }
   ungroup(id: string): EditOutcome<StructureEditRecord> {
     const group = this.tree.findShape(id);
-    if (!(group instanceof GroupShape)) throw new Error(`not a container: ${id}`);
+    const container = group instanceof ShapeProvider ? group.asContainer() : undefined;
+    if (!container) throw new Error(`not a container: ${id}`);
+    if (group instanceof ShapeProvider && !group.canUngroup()) throw new Error(`cannot ungroup composite shape: ${id}`);
     const parent = group.parent!;
     if (parent === this.tree.root) throw new Error(`cannot ungroup top-level container: ${id}`);
     const start = parent.children.items.indexOf(group);
-    return this.applyPlan([{ shape: group, index: 0 }, ...group.children.items.map((shape, index) => ({ shape, parent, index: start + index }))],
+    return this.applyPlan([{ shape: group, index: 0 }, ...container.children.items.map((shape, index) => ({ shape, parent, index: start + index }))],
       `${group.label} ungrouped`, `${group.label} restored`);
   }
   addTo(groupId: string, id: string): EditOutcome<StructureEditRecord> {
     const parent = this.tree.getContainer(groupId); const shape = this.tree.findShape(id);
-    if ((shape instanceof GroupShape && shape === parent) || (parent instanceof GroupShape && this.isAncestor(shape, parent))) throw new Error('cannot move a container into its own descendant');
+    if ((parent instanceof ShapeProvider && shape === parent) || (parent instanceof ShapeProvider && this.isAncestor(shape, parent))) {
+      throw new Error('cannot move a container into its own descendant');
+    }
     const index = parent.children.items.filter(child => child !== shape).length;
     return this.applyPlan([{ shape, parent, index }], `${shape.label} added to ${parent.label}`, `${shape.label} restored into ${shape.parent!.label}`);
   }
@@ -90,12 +102,24 @@ export class ShapeEditorReceiver {
     return this.applyPlan([{ shape, parent, index: front ? parent.children.items.length - 1 : 0 }],
       `${shape.label} moved to ${front ? 'front' : 'back'}`, `${shape.label} order restored`);
   }
+  private createMessage(shape: Shape): string {
+    const children = shape.descendants;
+    if (!children.length) return `${shape.label} created`;
+    return `${shape.label} created (${[shape.describe().heading, ...children.map(child => child.label)].join(' + ')})`;
+  }
+  private replayAttributePatch(patch: AttributeEditParameters): CommandResult {
+    for (const write of patch.writes) this.tree.findShape(write.shapeId).setAttribute(write.name, write.value);
+    return { lines: [...patch.lines] };
+  }
   private requireAvailableId(id: string) {
     if (this.tree.shapes.some(shape => shape.id === id)) throw new Error(`id already exists: ${id}`);
   }
   private isAncestor(ancestor: Shape, shape: Shape) {
-    let parent: ShapeContainer | undefined = shape.parent;
-    while (parent instanceof GroupShape) { if (parent === ancestor) return true; parent = parent.parent; }
+    let container: ShapeContainer | undefined = shape.parent;
+    while (container) {
+      if (container instanceof ShapeProvider && container === ancestor) return true;
+      container = container instanceof ShapeProvider ? container.parent : undefined;
+    }
     return false;
   }
   private applyPlan(placements: readonly ShapePlacement[], message: string, inverseMessage: string): EditOutcome<StructureEditRecord> {

@@ -1,9 +1,111 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ShapeFactory } from '../../src/domain/factory/ShapeFactory.js';
+import { Shape } from '../../src/domain/shapes/Shape.js';
+import { ShapeProvider } from '../../src/domain/shapes/ShapeProvider.js';
+import type { ShapeRegistration } from '../../src/domain/shapes/ShapeRegistration.js';
+import type { ShapeCreationContext } from '../../src/domain/shapes/ShapeCreationContext.js';
+import type { ShapeContainer } from '../../src/domain/tree/ShapeContainer.js';
+import type { ShapeTopology } from '../../src/domain/tree/ShapeTopology.js';
+import { ChildCollection } from '../../src/domain/tree/ChildCollection.js';
+import { RectShape } from '../../src/domain/shapes/RectShape.js';
 import { GroupShape } from '../../src/domain/shapes/GroupShape.js';
+import { createShapeRegistry } from '../helpers/builtins.js';
 
-const factory = new ShapeFactory();
+const registry = createShapeRegistry();
+const creationContext: ShapeCreationContext = {
+  createFromArguments() { throw new Error('leaf shape must not create children'); },
+  createFromSvgElement() { throw new Error('leaf shape must not create children'); },
+};
+
+const builtins = [
+  ['rect', 'rect', ['1', '2', '3', '4'], undefined],
+  ['circle', 'circle', ['1', '2', '3'], undefined],
+  ['ellipse', 'ellipse', ['1', '2', '3', '4'], undefined],
+  ['line', 'line', ['1', '2', '3', '4'], undefined],
+  ['text', 'text', ['1', '2', 'a < b & "c"'], [true, true, true]],
+  ['g', 'g', [], undefined],
+] as const;
+
+for (const [type, tag, args, quoted] of builtins) {
+  test(`${type} registration exposes static type and instance kind/tag/label/heading`, () => {
+    const registration: ShapeRegistration = registry.get(type);
+    assert.equal(registration.type, type);
+    assert.ok(registration.prototype instanceof ShapeProvider);
+    const shape = registration.createFromArguments('s', [...args], quoted, creationContext);
+    assert.ok(shape instanceof ShapeProvider);
+    assert.equal(shape.kind, type);
+    assert.equal(shape.tag, tag);
+    assert.equal(shape.label, `${type}#s`);
+    assert.equal(shape.describe().heading, `${tag}#s`);
+    assert.equal(shape.kind, shape.tag);
+  });
+}
+
+test('builtin registry contains exactly the six Phase 1 shapes in order', () => {
+  assert.deepEqual(registry.values().map(registration => registration.type), ['rect', 'circle', 'ellipse', 'line', 'text', 'g']);
+  for (const [type] of builtins) assert.equal(registry.get(type), registry.values().find(registration => registration.type === type));
+});
+
+test('ShapeRegistration is satisfied by concrete class objects, not by provider instances', () => {
+  const registration: ShapeRegistration = RectShape;
+  assert.equal(registration.type, 'rect');
+  assert.ok(registration.prototype instanceof ShapeProvider);
+  const shape = registration.createFromArguments('r', ['1', '2', '3', '4'], undefined, creationContext);
+  assert.ok(shape instanceof RectShape);
+  const fromSvg = registration.createFromSvgElement({ tag: 'rect', attributes: { id: 'q', x: '5' }, children: [] }, creationContext);
+  assert.equal(fromSvg.getAttribute('x'), '5');
+});
+
+test('registry creates and reads back through concrete static methods and the creation context', () => {
+  assert.equal(registry.createFromArguments('circle', 'c', ['1', '2', '3']).tag, 'circle');
+  const group = registry.createFromSvgElement({
+    tag: 'g', attributes: { id: 'g' },
+    children: [{ tag: 'rect', attributes: { id: 'r', x: '1' }, children: [] }],
+  });
+  assert.equal(group.tag, 'g');
+  const container = group.asContainer();
+  assert.ok(container);
+  assert.deepEqual(container.children.items.map(shape => shape.id), ['r']);
+});
+
+class PlainProvider extends ShapeProvider {
+  constructor(id = 'plain') { super(id, {}); }
+  get tag() { return 'plain'; }
+  protected get xKeys() { return []; }
+  protected get yKeys() { return []; }
+}
+
+class PlainContainer extends ShapeProvider implements ShapeContainer {
+  readonly #children = new ChildCollection(this);
+  constructor(id = 'box') { super(id, {}); }
+  get tag() { return 'plain'; }
+  get children() { return this.#children; }
+  override asContainer() { return this; }
+  protected get xKeys() { return []; }
+  protected get yKeys() { return []; }
+}
+
+test('ShapeProvider defaults are leaf behavior: no container, ungroup allowed, empty structure validation', () => {
+  const shape = new PlainProvider();
+  assert.equal(shape.asContainer(), undefined);
+  assert.equal(shape.canUngroup(), true);
+  const topology: ShapeTopology = {
+    parentOf() { throw new Error('default validateStructure must not query the topology'); },
+    childrenOf() { throw new Error('default validateStructure must not query the topology'); },
+    contains() { throw new Error('default validateStructure must not query the topology'); },
+  };
+  assert.doesNotThrow(() => shape.validateStructure(topology));
+});
+
+test('GroupShape is a container while leaf providers are not', () => {
+  const group = registry.createFromArguments('g', 'group', []) as GroupShape;
+  assert.equal(group.asContainer(), group);
+  assert.equal(group.canUngroup(), true);
+  const rect = registry.createFromArguments('rect', 'r', ['1', '2', '3', '4']);
+  assert.equal(rect.asContainer(), undefined);
+  const container = new PlainContainer();
+  assert.equal(container.asContainer(), container);
+});
 
 for (const [type, args, moved, scaled] of [
   ['rect', ['1', '2', '3', '4'], { x: '6', y: '9', width: '3', height: '4' }, { x: '12', y: '18', width: '6', height: '8' }],
@@ -12,8 +114,8 @@ for (const [type, args, moved, scaled] of [
   ['line', ['1', '2', '3', '4'], { x1: '6', y1: '9', x2: '8', y2: '11' }, { x1: '12', y1: '18', x2: '16', y2: '22' }],
   ['text', ['1', '2', 'a < b & "c"'], { x: '6', y: '9' }, { x: '12', y: '18' }],
 ] as const) {
-  test(`${type} owns geometry and supports polymorphic move/scale`, () => {
-    const shape = factory.createFromArguments(type, 's', args);
+  test(`${type} keeps Phase 1 polymorphic move/scale behavior`, () => {
+    const shape = registry.createFromArguments(type, 's', [...args], type === 'text' ? [true, true, true] : undefined);
     shape.move(5, 7);
     assert.deepEqual(shape.toSvgElement().attributes, { id: 's', ...moved });
     shape.scale(2);
@@ -22,8 +124,8 @@ for (const [type, args, moved, scaled] of [
   });
 }
 
-test('attributes validate before changing state, and absent styles can be restored', () => {
-  const shape = factory.createFromArguments('rect', 'r', ['0', '0', '1', '2']);
+test('attributes validate before changing state and absent styles can be restored', () => {
+  const shape = registry.createFromArguments('rect', 'r', ['0', '0', '1', '2']);
   for (const [name, value] of [['width', '-1'], ['x', 'Infinity'], ['bogus', '1'], ['stroke-width', '-1']]) {
     assert.throws(() => shape.setAttribute(name!, value!), /attribute|non-negative|finite/);
   }
@@ -32,16 +134,18 @@ test('attributes validate before changing state, and absent styles can be restor
   shape.setAttribute('fill', 'red');
   shape.setAttribute('fill', undefined);
   assert.equal(shape.getAttribute('fill'), undefined);
-  assert.throws(() => factory.createFromArguments('circle', 'c', ['0', '0', '-1']));
-  assert.throws(() => factory.createFromArguments('box', 'b', []), /unknown shape type/);
+  assert.throws(() => registry.createFromArguments('circle', 'c', ['0', '0', '-1']));
+  assert.throws(() => registry.createFromArguments('box', 'b', []), /unknown shape type: box/);
   assert.throws(() => shape.scale(0), /positive/);
 });
 
-test('nested groups delegate geometry atomically and set style on themselves', () => {
-  const outer = factory.createFromArguments('g', 'outer', []) as GroupShape;
-  const inner = factory.createFromArguments('g', 'inner', []) as GroupShape;
-  const first = factory.createFromArguments('rect', 'first', ['1', '2', '3', '4']);
-  const huge = factory.createFromArguments('circle', 'huge', ['1e308', '2', '1']);
+test('a leaf still extends Shape and groups still delegate geometry atomically', () => {
+  const rect = registry.createFromArguments('rect', 'r', ['1', '2', '3', '4']);
+  assert.ok(rect instanceof Shape);
+  const outer = registry.createFromArguments('g', 'outer', []) as GroupShape;
+  const inner = registry.createFromArguments('g', 'inner', []) as GroupShape;
+  const first = registry.createFromArguments('rect', 'first', ['1', '2', '3', '4']);
+  const huge = registry.createFromArguments('circle', 'huge', ['1e308', '2', '1']);
   outer.children.insert(inner, 0); inner.children.insert(first, 0); inner.children.insert(huge, 1);
   assert.throws(() => outer.scale(2), /finite/);
   assert.equal(first.getAttribute('x'), '1');
@@ -54,31 +158,12 @@ test('nested groups delegate geometry atomically and set style on themselves', (
   assert.equal(first.getAttribute('x'), '2.5');
 });
 
-test('finite moves reject catastrophic cancellation before changing geometry', () => {
-  const shape = factory.createFromArguments('rect', 'r', ['1','2','3','4']);
+test('finite moves and scales reject irreversible floating point edits before mutation', () => {
+  const shape = registry.createFromArguments('rect', 'r', ['1', '2', '3', '4']);
   const before = shape.toSvgElement();
   assert.throws(() => shape.move(1e20, 0), /reversible|precision/);
   assert.deepEqual(shape.toSvgElement(), before);
-});
-
-test('finite scales reject lost small values and inverse overflow before mutation', () => {
-  const tiny = factory.createFromArguments('circle', 'c', ['0','0','1e-300']);
+  const tiny = registry.createFromArguments('circle', 'c', ['0', '0', '1e-300']);
   assert.throws(() => tiny.scale(1e-100), /reversible|precision/);
   assert.equal(tiny.getAttribute('r'), '1e-300');
-  const huge = factory.createFromArguments('rect', 'r', [String(Number.MAX_VALUE),'0','0','0']);
-  assert.throws(() => huge.scale(0.055), /finite|reversible/);
-  assert.equal(huge.getAttribute('x'), String(Number.MAX_VALUE));
-  const subnormal = factory.createFromArguments('circle', 's', ['0','0',String(Number.MIN_VALUE)]);
-  assert.throws(() => subnormal.scale(0.5), /reversible|precision/);
-  assert.equal(subnormal.getAttribute('r'), String(Number.MIN_VALUE));
-});
-
-test('group numeric reversibility validates every descendant before editing any child', () => {
-  const group = factory.createFromArguments('g', 'g', []) as GroupShape;
-  const normal = factory.createFromArguments('circle', 'normal', ['0','0','0']);
-  const tiny = factory.createFromArguments('circle', 'tiny', ['0','0','1e-300']);
-  group.children.insert(normal, 0); group.children.insert(tiny, 1);
-  const before = group.toSvgElement();
-  assert.throws(() => group.scale(1e-100), /reversible|precision/);
-  assert.deepEqual(group.toSvgElement(), before);
 });

@@ -1,0 +1,21 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Run SVG Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--disable-extensions",
+        "--skip-welcome",
+        "--skip-release-notes",
+        "--user-data-dir=${workspaceFolder}/.vscode-test/development-profile",
+        "--extensionDevelopmentPath=${workspaceFolder}/extensions/vscode-svg",
+        "${workspaceFolder}/tests/assets"
+      ],
+      "outFiles": ["${workspaceFolder}/extensions/vscode-svg/dist/**/*.cjs"],
+      "preLaunchTask": "build SVG extension"
+    }
+  ]
+}

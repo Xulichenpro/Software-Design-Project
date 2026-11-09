@@ -1,2 +1,3 @@
-import { Command } from './Command.js';
-export abstract class QueryCommand extends Command {}
+import { PluginCommand } from './PluginCommand.js';
+
+export abstract class QueryCommand extends PluginCommand<void> {}
