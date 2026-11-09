@@ -1,4 +1,399 @@
-# Phase 2 第一部分：VS Code SVG 插件实践
+# Phase 2：插件实践与插件式重构
+
+本报告覆盖 Lab1 Phase 2 的两部分：VS Code 插件实践（A.1–A.3）与 SVG CLI 插件式重构。
+CLI 需求见 [phase_cli_2.md](../requirements/phase_cli_2.md)，Phase 1 语义见
+[phase_cli_1.md](../requirements/phase_cli_1.md)，Phase 1 架构见
+[README-phase1.md](README-phase1.md)。VS Code 部分保留在本文后半部分。
+
+## 交付物总览
+
+| 交付物 | 位置 |
+|---|---|
+| CLI 源码（内核、扩展点、Registry、装配） | [src/](../src/) |
+| 插件包（stats、dir、box、tree-star） | [plugins/](../plugins/) |
+| 方式 B 配置 | [plugins.config.json](../plugins.config.json) |
+| 扩展点接口与实现契约 | [doc/phase2/extension-contracts.md](phase2/extension-contracts.md) |
+| ADR（10 份） | [doc/phase2/adr/](phase2/adr/README.md) |
+| 指标报告（脚本生成） | [docs/metrics/metrics-final-HEAD.md](../docs/metrics/metrics-final-HEAD.md) |
+| 指标脚本 | [scripts/metrics.mjs](../scripts/metrics.mjs) |
+| VS Code 扩展 | [extensions/vscode-svg](../extensions/vscode-svg/) |
+| VS Code 报告 | 本文“第一部分”部分 |
+
+---
+
+# 第二部分：CLI 插件式重构
+
+## 1. 总览
+
+Phase 2 把 Phase 1 的两处**按名字分派**改成了四个内核侧扩展点、四个只读 Registry、
+`PluginHost`/`PluginLoader` 和启动时一次合并：
+
+- Phase 1 的 [`CommandFactory`](../src/application/factory/CommandFactory.ts) 已删除，命令由
+  [`CommandRegistry`](../src/application/registries/CommandRegistry.ts) 的 `CommandRegistration`
+  查表并实例化。
+- Phase 1 的 [`ShapeFactory`](../src/domain/factory/ShapeFactory.ts) 已删除，图形由
+  [`ShapeProviderRegistry`](../src/application/registries/ShapeProviderRegistry.ts) 保存具体类
+  对象，由类静态方法创建/读回。
+- `instanceof GroupShape` 的容器判断改为
+  [`ShapeProvider.asContainer()`](../src/domain/shapes/ShapeProvider.ts)。
+- 属性处理统一经过
+  [`AttributeService`](../src/application/attributes/AttributeService.ts)；树标签统一经过
+  [`TreeDecoratorRegistry`](../src/application/registries/TreeDecoratorRegistry.ts) 与
+  [`TreeRenderer`](../src/application/tree/TreeRenderer.ts)。
+
+四个扩展点、四个 Registry 和两个装配入口在阶段 1/2 建立；阶段 2–4 只新增插件包与
+装配/配置，内核与既有插件的 `git diff` 为空。
+
+## 2. 四个扩展点清单
+
+四个扩展点均定义在内核一侧（`src/domain` 或 `src/application`），插件只依赖
+[`src/extension-api/index.ts`](../src/extension-api/index.ts) 的公开抽象。
+
+### 2.1 `ShapeProvider`：图形类型
+
+| 项 | 内容 |
+|---|---|
+| 接口 | [`ShapeProvider`](../src/domain/shapes/ShapeProvider.ts)（`extends Shape`，抽象类） |
+| 职责 | 图形身份（`kind`/`tag`）、容器能力（`asContainer`/`canUngroup`）、结构校验（`validateStructure`）；静态创建/读回由 `ShapeRegistration` 约束 |
+| 内核调用位置 | `ShapeEditorReceiver.create()` → `ShapeProviderRegistry.get(type).createFromArguments()`（[ShapeEditorReceiver.ts](../src/application/receivers/ShapeEditorReceiver.ts)）；`SvgXmlCodec.decode()` → `ShapeProviderRegistry.createFromSvgElement()`（[SvgXmlCodec.ts](../src/infrastructure/svg/SvgXmlCodec.ts#L70)）；`ShapeTree.getContainer()/editStructure()` → `asContainer()`/`validateStructure()`（[ShapeTree.ts](../src/domain/tree/ShapeTree.ts#L28-L99)）；`StatsCommand.execute()` → `asContainer()`/`kind`（[StatsCommand.ts](../plugins/stats/src/StatsCommand.ts)） |
+| 已有实现 | `RectShape`、`CircleShape`、`EllipseShape`、`LineShape`、`TextShape`、`GroupShape`（内置）；`BoxShape`（插件） |
+| 禁用本阶段可选扩展时 | 六种内置图形仍可创建/读回；`create box` 报 `unknown shape type: box (is the plugin loaded?)` |
+| 违反契约时 | TypeScript 静态侧检查失败；Registry 重名/未知类型报错；`validateStructure` 失败时 `editStructure` 不提交；读回缺件/类型错误/重复 id 拒绝整个 `read` |
+
+注册项类型：
+
+```ts
+interface ShapeRegistration {
+  readonly type: string;
+  readonly prototype: ShapeProvider;
+  createFromArguments(id, args, quoted, context): ShapeProvider;
+  createFromSvgElement(element, context): ShapeProvider;
+}
+```
+
+Registry 保存具体类对象（不是 Provider 实例）；`BoxShape.kind="box"`、`tag="g"`，
+命令名 `box#id`，基础树标题 `g#id`，`(box)` 由标签插件追加。
+
+### 2.2 `PluginCommand`：命令
+
+| 项 | 内容 |
+|---|---|
+| 接口 | [`PluginCommand<TInput>`](../src/application/commands/base/PluginCommand.ts)（`extends Command`，抽象类） |
+| 职责 | 所有命令的公共父类；`QueryCommand`/`UndoableCommand`/`BarrierCommand`/`HistoryControlCommand` 继承它，具体命令再选择类别 |
+| 内核调用位置 | `CliApplication.run()` → `CommandRegistry.get(name)` → 注册项 `create(args, services)`（[CliApplication.ts](../src/cli/CliApplication.ts)）；`CommandExecutor.execute()` 按类别处理历史/查询/屏障（[CommandExecutor.ts](../src/application/execution/CommandExecutor.ts)） |
+| 已有实现 | Phase 1 的 19 个命令名（20 个具体类，`canvas` 一个注册项覆盖 Show/Resize）；`StatsCommand`、`DirCommand` |
+| 禁用本阶段可选扩展时 | 19 个内置命令仍可用；`stats`/`dir` 报 `unknown command: <name>` |
+| 违反契约时 | 注册项未声明/重名 → `plugin manifest mismatch`/`duplicate registration`；`activate` 抛错 → `plugin failed to activate`；执行器拒绝非四类命令 |
+
+`CommandRegistration.create(args, services)` 接收
+[`CommandServices`](../src/application/contracts/CommandServices.ts)（当前提供只读
+`DocumentView`）；`help` 文案来自注册项，`HelpCommand` 通过 `QueryReceiver` 查
+`CommandRegistry.values()`。
+
+### 2.3 `AttributeHandler`：属性语义
+
+| 项 | 内容 |
+|---|---|
+| 接口 | [`AttributeHandler`](../src/application/attributes/AttributeHandler.ts)（抽象类） |
+| 职责 | `handles(readonlyTarget, attr)` 判断是否负责；`apply()` 通过 `AttributeTransaction` 写入并返回正/反输出行 |
+| 内核调用位置 | `AttributeService.setAttribute()` 解析 0/1/多命中（[AttributeService.ts](../src/application/attributes/AttributeService.ts#L31-L43)） |
+| 已有实现 | `BoxAttributeHandler`（`box` 的 `fill`/`label`） |
+| 禁用本阶段可选扩展时 | 零命中走 Phase 1 默认白名单（fill/stroke/stroke-width/几何/text） |
+| 违反契约时 | 多命中 → 冲突错误且不写；handler 抛错 → 反序回滚、不 fallback、无记录/历史/事件；未知属性 → `unknown attribute: <attr>` |
+
+一次 `set` 生成一份 [`AttributeEditRecord`](../src/application/records/AttributeEditRecord.ts)，
+forward/inverse 都是 `AttributePatch`；undo/redo 经原 receiver 重放 patch，不重新选择 handler。
+
+### 2.4 `TreeDecorator`：树标签
+
+| 项 | 内容 |
+|---|---|
+| 接口 | [`TreeDecorator`](../src/application/tree/TreeDecorator.ts)（抽象类） |
+| 职责 | `onCommitted(event)` 维护实例状态；`decorate(row, document)` 返回行尾后缀 |
+| 内核调用位置 | `CommandExecutor` → `TreeDecoratorRegistry.onCommitted()`（[TreeDecoratorRegistry.ts](../src/application/registries/TreeDecoratorRegistry.ts)；[CommandExecutor.ts](../src/application/execution/CommandExecutor.ts#L70-L81)）；`TreeRenderer.decorate()` 按注册顺序拼接（[TreeRenderer.ts](../src/application/tree/TreeRenderer.ts#L52-L55)） |
+| 已有实现 | `ModifiedStarDecorator`（`modified-star`）、`BoxTypeDecorator`（`box-type-label`） |
+| 禁用本阶段可选扩展时 | 无标签；Phase 1 `tree` 基线逐字节不变 |
+| 违反契约时 | Registry 隔离单个 decorator 异常；重名/manifest 不一致 → 整包回滚 |
+
+`TreeDecoratorRegistry` 实现 `DocumentObserver`；`TreeRow.base` 是完整基础行（含树连接前缀，
+不含标签）；每个非空后缀前加一个空格。`modified-star` 状态在实例私有字段中，不进入
+`ShapeTree`/`EditRecord`。
+
+## 3. 注册、校验与 A/B 装配
+
+### 3.1 一次合并
+
+```text
+ApplicationBootstrap
+  -> 创建 ShapeTree 与四个空 Registry
+  -> 创建 AttributeService / 三个 receiver / SvgXmlCodec / TreeRenderer / Executor
+  -> builtinContributions（19 命令 + 六图形）
+  -> PluginHost（内置名称 + Terminal）
+  -> A: codeAssembly.load(host)；B: PluginLoader.load(configPath)
+  -> 每个插件：暂存 -> activate -> contributes 校验 -> 重名检查 -> 整包接纳/回滚
+  -> builtinContributions + pluginContributions 无覆盖合并
+  -> 四个 Registry 各 install() 一次
+  -> CliApplication.run()
+```
+
+`install()` 只允许一次；运行期 Registry 只暴露 `get()`/`values()`，不暴露可变 Map。
+
+### 3.2 方式 A：代码装配
+
+[`src/bootstrap/codeAssembly.ts`](../src/bootstrap/codeAssembly.ts) 静态导入插件默认导出与
+manifest，按固定顺序调用 `PluginHost.load`：
+
+```ts
+await host.load(statsPlugin, statsManifest);
+await host.load(dirPlugin, dirManifest);
+await host.load(boxPlugin, boxManifest);
+await host.load(treeStarPlugin, treeStarManifest);
+```
+
+新增插件只需新增包 + 修改这个顶层装配文件；内核、加载器、receiver、渲染器与既有插件不变。
+
+### 3.3 方式 B：配置装配
+
+根 [`plugins.config.json`](../plugins.config.json)：
+
+```json
+{
+  "plugins": [
+    { "module": "./plugins/stats" },
+    { "module": "./plugins/dir" },
+    { "module": "./plugins/box" },
+    { "module": "./plugins/tree-star" }
+  ]
+}
+```
+
+`<启动入口> --config plugins.config.json` 走
+[`PluginLoader`](../src/bootstrap/PluginLoader.ts)。相对路径以配置文件目录为基准；包名按
+Node 模块解析；`enabled:false` 完全跳过；`options` 原样传给 `activate` 并冻结；按数组顺序
+加载。A/B 使用同一 `PluginHost` 校验路径。
+
+加载失败输出（继续启动）：
+
+| 失败 | 输出 |
+|---|---|
+| 模块找不到 | `error: plugin not found: <module>` |
+| 没有默认导出 | `error: plugin has no default export: <module>` |
+| contributes 不一致 | `error: plugin manifest mismatch: <name> (declared: …, registered: …)` |
+| activate 抛错 | `error: plugin failed to activate: <name> (<reason>)` |
+| 同类重名 | `error: duplicate registration: <category>/<name>` |
+| 配置非法 | `error: invalid plugin config` |
+
+### 3.4 零内核差异
+
+设 `C` 为接入插件的那次提交，`N` 为新增插件包目录。装配层
+（`src/bootstrap/codeAssembly.ts`、`plugins.config.json`）允许变化，不计入判据：
+
+```bash
+git diff C^ C -- src/ plugins/ ":(exclude)$N" ":(exclude)src/bootstrap/codeAssembly.ts"
+# 输出必须为空
+```
+
+阶段 2/3/4 的实际检查均为空；A/B 同输入的 stdout 逐字节一致。
+
+## 4. 模块依赖图（PlantUML）
+
+### 4.1 Phase 1：工厂分派
+
+```plantuml
+@startuml
+skinparam componentStyle rectangle
+package "Phase 1 CLI" {
+  [CliApplication] --> [CommandFactory]
+  [CommandFactory] --> [Command]
+  [CommandFactory] --> [ShapeEditorReceiver]
+  [CommandFactory] --> [DocumentReceiver]
+  [CommandFactory] --> [QueryReceiver]
+  [ShapeEditorReceiver] --> [ShapeFactory]
+  [DocumentReceiver] --> [SvgXmlCodec]
+  [SvgXmlCodec] --> [ShapeFactory]
+  [ShapeFactory] --> [Shape]
+  [QueryReceiver] --> [ShapeTree]
+  [CommandExecutor] --> [Command]
+}
+@enduml
+```
+
+两个 Factory 都按名字 `switch`；容器判断依赖 `instanceof GroupShape`。
+
+### 4.2 Phase 2：注册表 + 扩展点 + 装配
+
+```plantuml
+@startuml
+skinparam componentStyle rectangle
+package "Assembly" {
+  [ApplicationBootstrap]
+  [builtinContributions]
+  [PluginHost]
+  [PluginLoader]
+  [codeAssembly]
+  [plugins.config.json]
+}
+package "Kernel" {
+  [CliApplication]
+  [CommandRegistry]
+  [ShapeProviderRegistry]
+  [AttributeHandlerRegistry]
+  [TreeDecoratorRegistry]
+  [CommandExecutor]
+  [ShapeEditorReceiver]
+  [DocumentReceiver]
+  [QueryReceiver]
+  [TreeRenderer]
+  [SvgXmlCodec]
+  [ShapeTree]
+}
+package "Plugins" {
+  [plugin-stats]
+  [plugin-dir]
+  [plugin-box]
+  [plugin-tree-star]
+}
+[ApplicationBootstrap] --> [builtinContributions]
+[ApplicationBootstrap] --> [PluginHost]
+[codeAssembly] --> [PluginHost]
+[plugins.config.json] --> [PluginLoader]
+[PluginLoader] --> [PluginHost]
+[PluginHost] --> [CommandRegistry]
+[PluginHost] --> [ShapeProviderRegistry]
+[PluginHost] --> [AttributeHandlerRegistry]
+[PluginHost] --> [TreeDecoratorRegistry]
+[ApplicationBootstrap] --> [CliApplication]
+[CliApplication] --> [CommandRegistry]
+[CliApplication] --> [CommandExecutor]
+[CommandExecutor] --> [TreeDecoratorRegistry]
+[ShapeEditorReceiver] --> [ShapeProviderRegistry]
+[ShapeEditorReceiver] --> [ShapeTree]
+[ShapeEditorReceiver] --> [AttributeHandlerRegistry]
+[DocumentReceiver] --> [SvgXmlCodec]
+[DocumentReceiver] --> [ShapeTree]
+[SvgXmlCodec] --> [ShapeProviderRegistry]
+[QueryReceiver] --> [TreeRenderer]
+[TreeRenderer] --> [TreeDecoratorRegistry]
+[plugin-stats] ..> [CommandRegistry]
+[plugin-dir] ..> [CommandRegistry]
+[plugin-box] ..> [ShapeProviderRegistry]
+[plugin-box] ..> [AttributeHandlerRegistry]
+[plugin-box] ..> [TreeDecoratorRegistry]
+[plugin-tree-star] ..> [TreeDecoratorRegistry]
+@enduml
+```
+
+插件只依赖 `src/extension-api` 的公开类型/抽象；装配层依赖内核与插件；内核不依赖任何具体插件。
+
+## 5. 关键数据流
+
+| 操作 | 流向 |
+|---|---|
+| Phase 1 基础命令 | `CliApplication` → `CommandRegistry.get` → 注册项 `create` → `CommandExecutor` → 原 Command → 原 Receiver |
+| `create box` | `CreateCommand` → `ShapeEditorReceiver.create` → `ShapeProviderRegistry.get("box")` → `BoxShape.createFromArguments(context)` → 子树 → `ShapeTree.editStructure`（最终拓扑校验）→ `StructureEditRecord` |
+| `stats` | `StatsCommand` → `CommandServices.document` 只读 DFS → `asContainer()` 计容器、叶子按 `kind` 首次出现顺序 → `CommandResult` |
+| `dir` | `DirCommand` → `DirectoryReader.currentDirectory/list` → `NodeDirectoryAdapter` → 目录优先/名称升序/两空格 → `CommandResult` |
+| `set box fill/label` | `SetAttributeCommand` → `ShapeEditorReceiver.setAttribute` → `AttributeService` → `BoxAttributeHandler` → `AttributeTransaction` → 一份 `AttributeEditRecord` |
+| `tree` 两标签 | `TreeCommand` → `QueryReceiver.tree` → `TreeRenderer` → `Shape.describe()` + `ModifiedStarDecorator`/`BoxTypeDecorator` → `CommandResult` |
+| `read/save` | `DocumentReceiver` → `SvgCodec`/`FileGateway`；box 读回先 `data-kind`，未注册降级 `g`；save 为历史屏障 |
+
+## 6. `dir` 的目录访问接口与适配器模式
+
+`DirectoryReader`、`NodeDirectoryAdapter`、`DirCommand` 全部位于
+[`plugins/dir`](../plugins/dir/)，内核不新增目录接口（因此接入 `dir` 的内核 diff 为 0）。
+
+| 适配器角色 | 名称 | 职责 |
+|---|---|---|
+| Client | [`DirCommand`](../plugins/dir/src/DirCommand.ts) | 调用目录访问接口、排序并格式化 |
+| Target | [`DirectoryReader`](../plugins/dir/src/DirectoryReader.ts) | `currentDirectory()` / `list(path)` 抽象 |
+| Adapter | [`NodeDirectoryAdapter`](../plugins/dir/src/NodeDirectoryAdapter.ts) | 将 Node `readdir` 适配为 `DirectoryEntry[]` |
+| Adaptee | Node `fs/promises.readdir` / `process.cwd()` | 真实文件系统 |
+
+行为：只列直接子项、包含隐藏项、不追踪符号链接（符号链接/特殊项按 `[FILE]`）；目录在前、
+文件在后，组内按名称固定字符比较升序；空目录 `(empty directory)`；读取失败
+`cannot read directory: <path>`。输出按用户确认的“标记后两个空格”：
+
+```text
+[DIR]  docs
+[FILE]  demo.svg
+```
+
+`dir` 是 `QueryCommand`：不依赖文档、不改变文档/历史/dirty，未 init 也可用。
+
+## 7. ADR
+
+- [ADR 索引](phase2/adr/README.md)
+- [ADR-001 四 Registry、PluginHost 与一次合并](phase2/adr/ADR-001-registries-and-bootstrap.md)
+- [ADR-002 ShapeProvider 继承 Shape、类对象注册](phase2/adr/ADR-002-shape-provider-static-registration.md)
+- [ADR-003 AttributeHandler 事务与输出契约](phase2/adr/ADR-003-attribute-handler-contract.md)
+- [ADR-004 Box 结构、模板与读回降级](phase2/adr/ADR-004-box-structure-and-readback.md)
+- [ADR-005 TreeDecorator 与 dirty 语义](phase2/adr/ADR-005-tree-decorator-dirty-semantics.md)
+- [ADR-006 contributes 校验与 A/B 装配](phase2/adr/ADR-006-plugin-manifest-and-loader.md)
+- [ADR-007 CommandServices 与插件命令依赖注入](phase2/adr/ADR-007-command-services.md)
+- [ADR-008 ShapeTopology 与结构校验](phase2/adr/ADR-008-shape-topology-validation.md)
+- [ADR-009 DirectoryReader 与 dir 输出](phase2/adr/ADR-009-directory-reader-and-dir-output.md)
+- [ADR-010 label/heading 与 box 文案](phase2/adr/ADR-010-label-heading-and-box-messages.md)
+
+## 8. 测试、指标与迭代报告
+
+### 8.1 测试
+
+| 命令 | 内容 |
+|---|---|
+| `npm run test:phase1` | Phase 1 回归、acceptance、CLI、XML、metrics、A/B、box/tags |
+| `npm run test:cli:plugins` | `tests/plugins/{stats,dir,box,tree-star}` 独立测试 |
+| `npm run test:plugin:unit` | VS Code 扩展单元测试 |
+| `npm run test:plugin:host` | 真实 VS Code 宿主测试 |
+| `npm run typecheck` / `npm run build` | 严格类型检查/构建 |
+
+最终验证（本机，2026-11-09；`ELECTRON_RUN_AS_NODE` 由 `scripts/test-vscode.mjs` 在宿主测试前清除）：
+
+| 命令 | 结果 |
+|---|---|
+| `npm run test:phase1` | 178/178 通过 |
+| `npm run test:cli:plugins` | 91/91 通过 |
+| `npm run test:plugin:unit` | 39/39 通过 |
+| `npm run test:plugin:host` | 15/15 通过（VS Code 1.145.2） |
+| `npm run typecheck` / `npm run build` / `npm run typecheck:extension` | 全部通过 |
+
+测试目录统一在 `tests/`；插件包不携带测试。`dir` 同时覆盖 `DirectoryReader` 替身与真实
+临时目录适配器；box 覆盖 data-kind 往返/降级/拒绝；tree-star 覆盖编辑→保存→再编辑→undo
+状态机；加载器覆盖四条失败、重名、整包回滚、disabled、options。
+
+### 8.2 指标
+
+[`scripts/metrics.mjs`](../scripts/metrics.mjs) 从 Git 历史生成
+[docs/metrics/metrics-final-HEAD.md](../docs/metrics/metrics-final-HEAD.md)：
+
+- 文件清单与职责、按内核/装配/插件三类拆分的新增/删除/当前行数；
+- **圈复杂度增量**（决策点计数代理：if/for/while/case/catch/&&/||/三元 `?`）；
+- VSCode 扩展单列，不计入 CLI 增量；生成命令写入报告。
+
+### 8.3 迭代报告与架构对比
+
+| 维度 | Phase 1 | Phase 2 |
+|---|---|---|
+| 命令分派 | `CommandFactory` switch | `CommandRegistry` + `CommandRegistration` |
+| 图形分派 | `ShapeFactory` switch | `ShapeProviderRegistry` + 类静态方法 |
+| 容器判断 | `instanceof GroupShape` | `ShapeProvider.asContainer()` |
+| 属性 | receiver 直接读写 + 工厂预校验 | `AttributeService` + `AttributeHandler` + 事务/记录 |
+| 树标签 | 无 | `TreeDecoratorRegistry` + `TreeRenderer` |
+| 插件装配 | 无 | `PluginHost` + A/B + 整包回滚 |
+| 新增插件 | 改内核/工厂 | 只新增包 + 装配文件或配置 |
+| 历史 | `CommandExecutor` 双栈 | 保持双栈，追加事件观察 |
+| 测试 | 167 | Phase 1 回归 + 插件独立测试 + A/B/基线 |
+
+结论：四个扩展点均由内核侧抽象承载；`stats`/`dir`/`box`/`tree-star` 以独立包接入；阶段
+2/3/4 的排除装配与新增包后的 `src/` 与既有 `plugins/` diff 均为空；A/B 输出逐字节一致；
+禁用全部可选插件时 Phase 1 行为与输出不变。
+
+---
+
+# 第一部分：VS Code 插件实践（A.1–A.3）
+
+> VS Code 部分的目标、职责分析、Decorator/Adapter 对应关系、Phase 1 复用评估、截图与
+> 测试记录如下。CLI 部分从上面开始；两部分的交付物互不混入指标增量（VSCode 单列）。
+
 
 本报告对应 [Phase 2 需求](../requirements/phase_cli_2.md) 的 A.1–A.3：为 Explorer 中的 SVG 文件添加 `[]` 标记，在原生 Outline 中提供元素层级与源码定位，并分析扩展机制、设计模式和 Phase 1 代码复用。Phase 1 的设计和命令说明保留在 [README-phase1.md](README-phase1.md)。
 

@@ -281,7 +281,8 @@ export abstract class TreeDecorator {
 ### 3.5 文档视图与拓扑
 
 ```ts
-// src/application/contracts/DocumentView.ts
+// src/domain/tree/DocumentView.ts
+// （src/application/contracts/DocumentView.ts 仅 re-export，保持领域不依赖 application）
 export interface DocumentView {
   requireInitialized(): void;
   readonly root: ShapeContainer;
