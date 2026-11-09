@@ -1,0 +1,12 @@
+{
+  "name": "@svgframe/plugin-shape-box",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "contributes": {
+    "shapes": ["box"],
+    "commands": [],
+    "attributes": ["box-attributes"],
+    "decorators": ["box-type-label"]
+  }
+}

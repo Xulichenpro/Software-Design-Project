@@ -1,6 +1,7 @@
 import type { PluginHost } from './PluginHost.js';
 import statsPlugin, { manifest as statsManifest } from '../../plugins/stats/src/index.js';
 import dirPlugin, { manifest as dirManifest } from '../../plugins/dir/src/index.js';
+import boxPlugin, { manifest as boxManifest } from '../../plugins/box/src/index.js';
 
 /**
  * Route A assembly. Static imports keep module resolution independent of the
@@ -10,4 +11,5 @@ import dirPlugin, { manifest as dirManifest } from '../../plugins/dir/src/index.
 export async function load(host: PluginHost): Promise<void> {
   await host.load(statsPlugin, statsManifest);
   await host.load(dirPlugin, dirManifest);
+  await host.load(boxPlugin, boxManifest);
 }
