@@ -83,7 +83,7 @@ export class PluginLoader {
   async #resolveModule(raw: string, configDir: string, configPath: string): Promise<string | undefined> {
     if (!raw.startsWith('.') && !isAbsolute(raw)) {
       try {
-        return createRequire(configPath).resolve(raw);
+        return createRequire(resolve(configPath)).resolve(raw);
       } catch {
         return undefined;
       }
@@ -112,10 +112,8 @@ export class PluginLoader {
         try {
           const parsed = JSON.parse(await readFile(candidate, 'utf8')) as Record<string, unknown>;
           const name = typeof parsed.name === 'string' && parsed.name ? parsed.name : moduleName;
-          const contributes = typeof parsed.contributes === 'object' && parsed.contributes !== null
-            ? parsed.contributes as PluginContributes
-            : undefined;
-          return contributes ? { name, contributes } : { name };
+          const contributes = parsed.contributes as PluginContributes | undefined;
+          return contributes === undefined ? { name } : { name, contributes };
         } catch {
           return { name: moduleName };
         }

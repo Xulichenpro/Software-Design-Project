@@ -20,7 +20,6 @@ import { SvgXmlCodec } from '../infrastructure/svg/SvgXmlCodec.js';
 import { createBuiltinContributions } from './builtinContributions.js';
 import { PluginHost } from './PluginHost.js';
 import { PluginLoader } from './PluginLoader.js';
-import { load as loadCodeAssembly } from './codeAssembly.js';
 
 export class ApplicationBootstrap {
   constructor(
@@ -47,8 +46,10 @@ export class ApplicationBootstrap {
       attributes: [...builtin.attributes.keys()],
       decorators: [...builtin.decorators.keys()],
     }, this.terminal);
-    if (this.pluginSource === undefined) await loadCodeAssembly(host);
-    else await new PluginLoader(host, this.terminal).load(this.pluginSource);
+    if (this.pluginSource === undefined) {
+      const { load } = await import('./codeAssembly.js');
+      await load(host);
+    } else await new PluginLoader(host, this.terminal).load(this.pluginSource);
     shapes.install(builtin.shapes, host.contributions.shapes);
     commands.install(builtin.commands, host.contributions.commands);
     handlers.install(builtin.attributes, host.contributions.attributes);
