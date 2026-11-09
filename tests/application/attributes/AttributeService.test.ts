@@ -6,6 +6,12 @@ import type { AttributeTransaction } from '../../../src/application/attributes/A
 import type { ReadonlyShape } from '../../../src/application/attributes/ReadonlyShape.js';
 import type { AttributeEditRequest } from '../../../src/application/contracts/AttributeEditParameters.js';
 import { AttributeEditRecord } from '../../../src/application/records/AttributeEditRecord.js';
+import { CommandExecutor } from '../../../src/application/execution/CommandExecutor.js';
+import { MoveCommand } from '../../../src/application/commands/editing/MoveCommand.js';
+import { SetAttributeCommand } from '../../../src/application/commands/editing/SetAttributeCommand.js';
+import { UndoCommand } from '../../../src/application/commands/history/UndoCommand.js';
+import { RedoCommand } from '../../../src/application/commands/history/RedoCommand.js';
+import type { DocumentEvent } from '../../../src/application/contracts/DocumentEvent.js';
 import { createReceiverEnvironment } from '../../helpers/builtins.js';
 
 function setup(handlers: readonly AttributeHandler[] = []) {
@@ -147,3 +153,101 @@ test('unknown targets and uninitialized documents fail before any handler or wri
   assert.throws(() => attributes.setAttribute({ id: 'missing', name: 'fill', value: 'red', quoted: false }), /no such shape/);
   assert.equal(handler.calls, 0);
 });
+
+for (const field of ['forwardLines', 'inverseLines'] as const) {
+  for (const failure of ['getter', 'iterator'] as const) {
+    test(`a handler ${field} ${failure} failure rolls back writes and preserves history and observers`, async () => {
+      class BrokenOutcomeHandler extends SetFillHandler {
+        override apply(target: ReadonlyShape, request: AttributeEditRequest, transaction: AttributeTransaction): AttributeOutcome {
+          const outcome = super.apply(target, request, transaction);
+          if (failure === 'getter') {
+            Object.defineProperty(outcome, field, { get() { throw new Error('outcome exploded'); } });
+          } else {
+            Object.defineProperty(outcome[field], Symbol.iterator, { value() { throw new Error('outcome exploded'); } });
+          }
+          return outcome;
+        }
+      }
+      const handler = new BrokenOutcomeHandler();
+      const { tree, editor } = setup([handler]);
+      const events: DocumentEvent[] = [];
+      const executor = new CommandExecutor({ onCommitted(event) { events.push(event); } }, tree);
+      await executor.execute(new MoveCommand(editor, { id: 'r', dx: 2, dy: 0 }));
+      await executor.execute(new UndoCommand());
+      const notifications = events.length;
+
+      await assert.rejects(executor.execute(new SetAttributeCommand(editor, {
+        id: 'r', name: 'fill', value: 'red', quoted: false,
+      })), /outcome exploded/);
+      assert.equal(tree.findShape('r').getAttribute('fill'), undefined);
+      assert.equal(events.length, notifications);
+      await executor.execute(new RedoCommand());
+      assert.equal(tree.findShape('r').getAttribute('x'), '3');
+      await executor.execute(new UndoCommand());
+      assert.equal(tree.findShape('r').getAttribute('x'), '1');
+    });
+  }
+}
+
+for (const failedValue of ['red', undefined]) {
+  test(`a default attribute summary failure for ${String(failedValue)} rolls back the write`, () => {
+    const { attributes, tree } = setup();
+    const shape = tree.findShape('r');
+    const summarize = shape.attributeSummary.bind(shape);
+    shape.attributeSummary = (name, value) => {
+      if (value === failedValue) throw new Error('summary exploded');
+      return summarize(name, value);
+    };
+    assert.throws(() => attributes.setAttribute({ id: 'r', name: 'fill', value: 'red', quoted: false }), /summary exploded/);
+    assert.equal(shape.getAttribute('fill'), undefined);
+  });
+}
+
+for (const direction of ['undo', 'redo'] as const) {
+  test(`a later ${direction} attribute write failure rolls back replay and preserves history and observers`, async () => {
+    class DimensionsHandler extends AttributeHandler {
+      readonly name = 'dimensions';
+      calls = 0;
+      handles(_target: ReadonlyShape, name: string): boolean {
+        if (this.calls) throw new Error('replay must not select handlers');
+        return name === 'width';
+      }
+      apply(_target: ReadonlyShape, _request: AttributeEditRequest, transaction: AttributeTransaction): AttributeOutcome {
+        this.calls += 1;
+        transaction.setAttribute('r', 'width', '9');
+        transaction.setAttribute('r', 'height', '8');
+        return { forwardLines: ['dimensions updated'], inverseLines: ['dimensions restored'] };
+      }
+    }
+    const handler = new DimensionsHandler();
+    const { tree, editor } = setup([handler]);
+    const events: DocumentEvent[] = [];
+    const executor = new CommandExecutor({ onCommitted(event) { events.push(event); } }, tree);
+    await executor.execute(new SetAttributeCommand(editor, { id: 'r', name: 'width', value: '9', quoted: false }));
+    if (direction === 'redo') await executor.execute(new UndoCommand());
+    const shape = tree.findShape('r');
+    const before = [shape.getAttribute('width'), shape.getAttribute('height')];
+    const setAttribute = shape.setAttribute.bind(shape);
+    let fail = true;
+    shape.setAttribute = (name, value) => {
+      if (fail && (direction === 'undo' ? name === 'width' && value === '3' : name === 'height' && value === '8')) {
+        throw new Error('replay write rejected');
+      }
+      setAttribute(name, value);
+    };
+    const Command = direction === 'undo' ? UndoCommand : RedoCommand;
+    const notifications = events.length;
+    await assert.rejects(executor.execute(new Command()), /replay write rejected/);
+    assert.deepEqual([shape.getAttribute('width'), shape.getAttribute('height')], before);
+    assert.equal(events.length, notifications);
+    assert.equal(handler.calls, 1);
+
+    fail = false;
+    await executor.execute(new Command());
+    assert.deepEqual([shape.getAttribute('width'), shape.getAttribute('height')], direction === 'undo' ? ['3', '4'] : ['9', '8']);
+    assert.equal(events.length, notifications + 1);
+    assert.equal(handler.calls, 1);
+    await executor.execute(direction === 'undo' ? new RedoCommand() : new UndoCommand());
+    assert.deepEqual([shape.getAttribute('width'), shape.getAttribute('height')], before);
+  });
+}

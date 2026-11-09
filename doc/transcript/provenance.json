@@ -1,0 +1,26 @@
+{
+  "baseline": "214098542dee81fec1ab0994e651f29b5ab939e6",
+  "command": "node --import tsx scripts/record-transcripts.mjs",
+  "sessions": [
+    {
+      "name": "cli-1",
+      "baseline": true,
+      "saved": "demo.svg"
+    },
+    {
+      "name": "flowchart-a",
+      "baseline": true,
+      "saved": "flowchart.svg"
+    },
+    {
+      "name": "box",
+      "baseline": false,
+      "saved": "flowchart-box.svg"
+    },
+    {
+      "name": "plugins",
+      "baseline": false,
+      "saved": "plugins.svg"
+    }
+  ]
+}

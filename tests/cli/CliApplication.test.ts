@@ -129,7 +129,7 @@ test('application awaits each command before reading the next input line', async
   ]);
   const running = f.app.run();
   await startedPromise;
-  assert.equal(f.terminal.prompts.length, 2);
+  assert.equal(f.terminal.prompts.length, 1, 'the next prompt must wait until the current command completes');
   assert.ok(!f.terminal.output.includes('pong'));
   assert.ok(finish);
   finish();

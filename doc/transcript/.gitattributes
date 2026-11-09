@@ -1,0 +1,5 @@
+*.txt text eol=lf
+*.svg text eol=lf
+*.json text eol=lf
+# Raw terminal goldens intentionally end with the literal prompt "svg> ".
+*.expected.txt whitespace=-blank-at-eol

@@ -11,6 +11,8 @@ import { AddToCommand } from '../../../src/application/commands/editing/AddToCom
 import { DeleteCommand } from '../../../src/application/commands/editing/DeleteCommand.js';
 import { GroupCommand } from '../../../src/application/commands/editing/GroupCommand.js';
 import { MoveCommand } from '../../../src/application/commands/editing/MoveCommand.js';
+import { FrontCommand } from '../../../src/application/commands/editing/FrontCommand.js';
+import { BackCommand } from '../../../src/application/commands/editing/BackCommand.js';
 import { SetAttributeCommand } from '../../../src/application/commands/editing/SetAttributeCommand.js';
 import { RedoCommand } from '../../../src/application/commands/history/RedoCommand.js';
 import { UndoCommand } from '../../../src/application/commands/history/UndoCommand.js';
@@ -369,3 +371,71 @@ test('commands that change nothing and commands that fail do not add stars', asy
   assert.deepEqual(lines(harness), clean);
   assert.equal(decorator.decorate(row('a', 'rect'), environment.tree), undefined);
 });
+
+for (const [name, Command, id] of [
+  ['front', FrontCommand, 'a'],
+  ['back', BackCommand, 'b'],
+] as const) {
+  test(`${name} observes top-level order changes, keeps occurrence stars through history, and ignores no-ops`, async () => {
+    const harness = createHarness();
+    const { environment, decorator, executor } = harness;
+    await executor.execute(new InitCommand(environment.document));
+    await executor.execute(new CreateCommand(environment.editor, 'rect', 'a', ['1', '2', '3', '4']));
+    await executor.execute(new CreateCommand(environment.editor, 'rect', 'b', ['5', '6', '7', '8']));
+    await executor.execute(new SaveCommand(environment.document, 'drawing.svg'));
+
+    await executor.execute(new Command(environment.editor, id));
+    assert.deepEqual(environment.tree.root.children.items.map(shape => shape.id), ['b', 'a']);
+    assert.equal(decorator.decorate(rootRow, environment.tree), '*');
+    assert.equal(decorator.decorate(row(id, 'rect'), environment.tree), '*');
+    await executor.execute(new UndoCommand());
+    assert.deepEqual(environment.tree.root.children.items.map(shape => shape.id), ['a', 'b']);
+    assert.equal(decorator.decorate(rootRow, environment.tree), '*');
+    await executor.execute(new RedoCommand());
+    assert.equal(decorator.decorate(rootRow, environment.tree), '*');
+
+    await executor.execute(new SaveCommand(environment.document, 'drawing.svg'));
+    await executor.execute(new Command(environment.editor, id));
+    assert.equal(decorator.decorate(rootRow, environment.tree), undefined);
+    assert.equal(decorator.decorate(row('a', 'rect'), environment.tree), undefined);
+    assert.equal(decorator.decorate(row('b', 'rect'), environment.tree), undefined);
+  });
+}
+
+test('deleting the first top-level child does not mark a surviving sibling for its shifted position', async () => {
+  const harness = createHarness();
+  const { environment, decorator, executor } = harness;
+  await executor.execute(new InitCommand(environment.document));
+  await executor.execute(new CreateCommand(environment.editor, 'rect', 'a', ['1', '2', '3', '4']));
+  await executor.execute(new CreateCommand(environment.editor, 'rect', 'b', ['5', '6', '7', '8']));
+  await executor.execute(new SaveCommand(environment.document, 'drawing.svg'));
+  await executor.execute(new DeleteCommand(environment.editor, 'a'));
+  assert.equal(decorator.decorate(rootRow, environment.tree), '*');
+  assert.equal(decorator.decorate(row('b', 'rect'), environment.tree), undefined);
+});
+
+for (const [name, Command, id] of [
+  ['front', FrontCommand, 'a'],
+  ['back', BackCommand, 'b'],
+] as const) {
+  test(`${name} still observes nested order changes and ignores a repeated no-op`, async () => {
+    const harness = createHarness();
+    const { environment, decorator, executor } = harness;
+    await executor.execute(new InitCommand(environment.document));
+    await executor.execute(new CreateCommand(environment.editor, 'g', 'parent', []));
+    await executor.execute(new CreateCommand(environment.editor, 'rect', 'a', ['1', '2', '3', '4'], 'parent'));
+    await executor.execute(new CreateCommand(environment.editor, 'rect', 'b', ['5', '6', '7', '8'], 'parent'));
+    await executor.execute(new SaveCommand(environment.document, 'drawing.svg'));
+    await executor.execute(new Command(environment.editor, id));
+    assert.deepEqual(environment.tree.getContainer('parent').children.items.map(shape => shape.id), ['b', 'a']);
+    assert.equal(decorator.decorate(rootRow, environment.tree), '*');
+    assert.equal(decorator.decorate(row('parent', 'g'), environment.tree), '*');
+
+    await executor.execute(new SaveCommand(environment.document, 'drawing.svg'));
+    await executor.execute(new Command(environment.editor, id));
+    assert.equal(decorator.decorate(rootRow, environment.tree), undefined);
+    assert.equal(decorator.decorate(row('parent', 'g'), environment.tree), undefined);
+    assert.equal(decorator.decorate(row('a', 'rect'), environment.tree), undefined);
+    assert.equal(decorator.decorate(row('b', 'rect'), environment.tree), undefined);
+  });
+}
