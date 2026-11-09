@@ -1,17 +1,17 @@
 # Phase 2 指标报告（final → HEAD）
 
 > 本报告由 `scripts/metrics.mjs` **从 Git 历史自动生成**（Generated from git history），请勿手工编辑。
-> 生成命令：`node scripts/metrics.mjs --from final --to HEAD`；产物目录：`docs/metrics/`。
+> 生成命令：`node scripts/metrics.mjs --from final --to HEAD`；产物目录：`doc/metrics/`。
 > 范围：`git diff` 统计；已排除 `node_modules`、`dist`；VSCode 扩展单列，不计入 CLI 增量。
 
 ## 概览
 
 | 分类 | 文件数 | 新增行 | 删除行 |
 |---|---:|---:|---:|
-| 内核（Kernel） | 48 | 1055 | 278 |
-| 装配（Assembly） | 6 | 548 | 11 |
-| 插件（Plugin） | 0 | 0 | 0 |
-| 工具与配置（Tooling） | 5 | 231 | 3 |
+| 内核（Kernel） | 49 | 1056 | 278 |
+| 装配（Assembly） | 6 | 554 | 11 |
+| 插件（Plugin） | 15 | 788 | 0 |
+| 工具与配置（Tooling） | 5 | 235 | 3 |
 | VSCode 扩展（单列） | 10 | 415 | 0 |
 
 ## 内核（Kernel）
@@ -36,7 +36,7 @@
 | `src/application/contracts/CommandResult.ts` | 命令/文档/属性公开契约 | 7 | 1 | 7 |
 | `src/application/contracts/CommandServices.ts` | 命令/文档/属性公开契约 | 6 | 0 | 6 |
 | `src/application/contracts/DocumentEvent.ts` | 命令/文档/属性公开契约 | 31 | 0 | 31 |
-| `src/application/contracts/DocumentView.ts` | 命令/文档/属性公开契约 | 9 | 0 | 1 |
+| `src/application/contracts/DocumentView.ts` | 命令/文档/属性公开契约 | 1 | 0 | 1 |
 | `src/application/execution/CommandExecutor.ts` | 历史双栈与 edited/history/barrier 事件通知 | 40 | 3 | 82 |
 | `src/application/execution/DocumentSnapshot.ts` | 不可变前后文档快照 | 32 | 0 | 32 |
 | `src/application/factory/CommandFactory.ts` | 内核源码 | 0 | 103 | 0 |
@@ -63,6 +63,7 @@
 | `src/domain/shapes/ShapeRegistration.ts` | 图形注册项静态契约 | 19 | 0 | 19 |
 | `src/domain/shapes/ShapeSvgReadback.ts` | 内置图形共用的参数与 SVG 读回规则 | 57 | 0 | 57 |
 | `src/domain/shapes/TextShape.ts` | 内置图形具体类：静态创建/读回与多态几何 | 21 | 3 | 34 |
+| `src/domain/tree/DocumentView.ts` | 树与容器领域实现 | 9 | 0 | 9 |
 | `src/domain/tree/ShapeTopology.ts` | 结构校验的不可变最终拓扑视图 | 12 | 0 | 12 |
 | `src/domain/tree/ShapeTree.ts` | 共享文档、id 索引、最终拓扑校验与结构提交 | 61 | 17 | 104 |
 | `src/extension-api/index.ts` | 插件唯一公开导入入口（只做 re-export） | 42 | 0 | 42 |
@@ -77,7 +78,7 @@
 |---|---|---:|---:|---:|
 | `src/bootstrap/ApplicationBootstrap.ts` | 一次性装配四个 Registry 并启动 CLI | 43 | 10 | 61 |
 | `src/bootstrap/builtinContributions.ts` | 内置 19 命令与六种图形的装配字典 | 177 | 0 | 177 |
-| `src/bootstrap/codeAssembly.ts` | 方式 A 顶层代码装配入口（阶段 1 为空） | 7 | 0 | 7 |
+| `src/bootstrap/codeAssembly.ts` | 方式 A 顶层代码装配入口（阶段 1 为空） | 13 | 0 | 13 |
 | `src/bootstrap/main.ts` | 进程入口与 --config 选择 | 4 | 1 | 6 |
 | `src/bootstrap/PluginHost.ts` | 插件暂存、manifest 校验、重名与整包回滚 | 164 | 0 | 164 |
 | `src/bootstrap/PluginLoader.ts` | 配置读取、模块解析与委托 Host 加载 | 153 | 0 | 153 |
@@ -86,7 +87,23 @@
 
 ### 文件清单与职责
 
-（无变化）
+| 文件 | 职责 | 新增行 | 删除行 | 当前行数 |
+|---|---|---:|---:|---:|
+| `plugins/dir/package.json` | 插件包 | 9 | 0 | 9 |
+| `plugins/dir/src/DirCommand.ts` | 插件包 | 32 | 0 | 32 |
+| `plugins/dir/src/DirectoryReader.ts` | 插件包 | 11 | 0 | 11 |
+| `plugins/dir/src/index.ts` | 插件包 | 25 | 0 | 25 |
+| `plugins/dir/src/NodeDirectoryAdapter.ts` | 插件包 | 25 | 0 | 25 |
+| `plugins/dir/tests/DirCommand.test.ts` | 插件包 | 127 | 0 | 127 |
+| `plugins/dir/tests/fixtures.ts` | 插件包 | 61 | 0 | 61 |
+| `plugins/dir/tests/NodeDirectoryAdapter.test.ts` | 插件包 | 85 | 0 | 85 |
+| `plugins/dir/tests/plugin.test.ts` | 插件包 | 56 | 0 | 56 |
+| `plugins/stats/package.json` | 插件包 | 9 | 0 | 9 |
+| `plugins/stats/src/index.ts` | 插件包 | 24 | 0 | 24 |
+| `plugins/stats/src/StatsCommand.ts` | 插件包 | 41 | 0 | 41 |
+| `plugins/stats/tests/fixtures.ts` | 插件包 | 114 | 0 | 114 |
+| `plugins/stats/tests/plugin.test.ts` | 插件包 | 60 | 0 | 60 |
+| `plugins/stats/tests/StatsCommand.test.ts` | 插件包 | 109 | 0 | 109 |
 
 ## 工具与配置（Tooling）
 
@@ -94,9 +111,9 @@
 
 | 文件 | 职责 | 新增行 | 删除行 | 当前行数 |
 |---|---|---:|---:|---:|
-| `package.json` | 测试、metrics、构建脚本 | 15 | 2 | 36 |
-| `plugins.config.json` | 方式 B 插件配置（当前为空配置） | 3 | 0 | 3 |
-| `scripts/metrics.mjs` | 从 Git 历史生成 docs/metrics 报告 | 178 | 0 | 178 |
+| `package.json` | 测试、metrics、构建脚本 | 16 | 2 | 37 |
+| `plugins.config.json` | 方式 B 插件配置（当前为空配置） | 6 | 0 | 6 |
+| `scripts/metrics.mjs` | 从 Git 历史生成 doc/metrics 报告 | 178 | 0 | 178 |
 | `scripts/test-vscode.mjs` | 仓库脚本 | 34 | 0 | 34 |
 | `tsconfig.json` | TypeScript 编译范围 | 1 | 1 | 13 |
 
@@ -119,6 +136,11 @@
 
 区间 `final..HEAD` 的提交标题（最新在前）：
 
+- feat: add stats and dir command plugins
+- test: fix contradictory stats plugin assertions
+- docs: exclude assembly files from kernel zero-diff check
+- test: define stats and dir plugin contracts
+- refactor: keep DocumentView and XML readback on domain contracts
 - feat: make phase 2 extension framework executable
 - test: fix tree row base and committed test typings
 - test: give executor a document view for snapshots

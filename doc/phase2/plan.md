@@ -62,7 +62,7 @@
   `ApplicationBootstrap` 装配；`codeAssembly.ts` 空实现；`plugins.config.json` 空配置；
   `main.ts` 支持 `--config`。
 - `src/extension-api/index.ts` 公开入口；tsconfig include `plugins/**/*.ts`。
-- `scripts/metrics.mjs` + `docs/metrics/` 首次产出；`package.json` 增加
+- `scripts/metrics.mjs` + `doc/metrics/` 首次产出；`package.json` 增加
   `test:plugin`/`test:all`/`metrics` 等脚本（不改变 Phase 1 语义）。
 
 ### 完成判据
@@ -176,7 +176,7 @@ box 插件接入；A/B 两种装配各演示一次；box 会话完整复现。
 - `doc/README.md` 更新：扩展点清单（接口名/职责/内核调用位置/现有实现/禁用行为/
   违反契约报错）、A/B 说明、PlantUML 模块依赖图、ADR 链接、dir 适配器说明、
   VSCode A.3（已有）。
-- `docs/metrics/`：文件清单/职责、按内核/装配/插件三类行数、圈复杂度增量（final→p2）；
+- `doc/metrics/`：文件清单/职责、按内核/装配/插件三类行数、圈复杂度增量（final→p2）；
   脚本随仓库提交，数字由脚本生成。
 - 架构对比图（Phase 1 → Phase 2）；迭代报告。
 - 最终全量测试：Phase 1、插件单元、VSCode host、typecheck、build、A/B/基线/零差异。
