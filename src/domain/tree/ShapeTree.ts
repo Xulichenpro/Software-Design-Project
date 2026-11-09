@@ -4,7 +4,7 @@ import type { Shape } from '../shapes/Shape.js';
 import type { ShapeContainer } from './ShapeContainer.js';
 import type { ShapeTopology } from './ShapeTopology.js';
 import type { TreeStructureParameters } from './TreeStructureParameters.js';
-import type { DocumentView } from '../../application/contracts/DocumentView.js';
+import type { DocumentView } from './DocumentView.js';
 
 export class ShapeTree implements DocumentView {
   #root: CanvasRoot | undefined;

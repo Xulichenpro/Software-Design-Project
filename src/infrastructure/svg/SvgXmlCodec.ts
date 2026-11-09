@@ -4,13 +4,13 @@ import type { SvgCodec } from '../../application/contracts/SvgCodec.js';
 import type { SvgImportResult } from '../../application/contracts/SvgImportResult.js';
 import { EditorError } from '../../application/contracts/EditorError.js';
 import { ShapeTree } from '../../domain/tree/ShapeTree.js';
-import type { ShapeProviderRegistry } from '../../application/registries/ShapeProviderRegistry.js';
+import type { ShapeCreationContext } from '../../domain/shapes/ShapeCreationContext.js';
 import type { SvgElement } from '../../domain/representation/SvgElement.js';
 import { XmlParser } from './XmlParser.js';
 
 export class SvgXmlCodec implements SvgCodec {
   static readonly namespace = 'http://www.w3.org/2000/svg';
-  constructor(private readonly shapes: ShapeProviderRegistry) {}
+  constructor(private readonly shapes: ShapeCreationContext) {}
   decode(text: string): SvgImportResult {
     let document: Document;
     try {

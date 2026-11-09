@@ -36,7 +36,7 @@
 | `src/application/contracts/CommandResult.ts` | 命令/文档/属性公开契约 | 7 | 1 | 7 |
 | `src/application/contracts/CommandServices.ts` | 命令/文档/属性公开契约 | 6 | 0 | 6 |
 | `src/application/contracts/DocumentEvent.ts` | 命令/文档/属性公开契约 | 31 | 0 | 31 |
-| `src/application/contracts/DocumentView.ts` | 命令/文档/属性公开契约 | 9 | 0 | 9 |
+| `src/application/contracts/DocumentView.ts` | 命令/文档/属性公开契约 | 9 | 0 | 1 |
 | `src/application/execution/CommandExecutor.ts` | 历史双栈与 edited/history/barrier 事件通知 | 40 | 3 | 82 |
 | `src/application/execution/DocumentSnapshot.ts` | 不可变前后文档快照 | 32 | 0 | 32 |
 | `src/application/factory/CommandFactory.ts` | 内核源码 | 0 | 103 | 0 |
