@@ -18,18 +18,20 @@
 
 ## 2. Implementation
 
-- [ ] Add `XmlParser.ts`: strict error reporting, original DOM, no CLI shape validation or generated ids. Update `SvgXmlCodec` to call it and preserve `EditorError('invalid SVG XML')` and every remaining validation.
-- [ ] Add extension `SourceRangeIndex.ts`: use sax strict open/close events, preserve original UTF-16 offsets, match DOM elements in source order, key by DOM node identity, and provide full element/name ranges. Do not serialize XML to locate nodes.
-- [ ] Add `SvgDocumentSymbolProvider.ts` and `SvgOutlineAdapter.ts`: read current text, preserve original labels/children, map ranges, return empty on incomplete XML/cancellation.
-- [ ] Add `SvgFileDecorationProvider.ts`: `.svg` files only, async `workspace.fs.stat`, no propagation, undefined for directories/non-SVG/errors/cancellation.
-- [ ] Add `extension.ts`, extension manifest, bundle build, independent typecheck, and F5 launch/tasks. Bundle runtime dependencies; do not impose CLI Node 24 requirement on the extension host.
+- [x] Add `XmlParser.ts`: strict error reporting, original DOM, no CLI shape validation or generated ids. Update `SvgXmlCodec` to call it and preserve `EditorError('invalid SVG XML')` and every remaining validation.
+- [x] Add extension `SourceRangeIndex.ts`: use sax strict open/close events, preserve original UTF-16 offsets, match DOM elements in source order, key by DOM node identity, and provide full element/name ranges. Do not serialize XML to locate nodes.
+- [x] Add `SvgDocumentSymbolProvider.ts` and `SvgOutlineAdapter.ts`: read current text, preserve original labels/children, map ranges, return empty on incomplete XML/cancellation.
+- [x] Add `SvgFileDecorationProvider.ts`: `.svg` files only, async `workspace.fs.stat`, no propagation, undefined for directories/non-SVG/errors/cancellation.
+- [x] Add `extension.ts`, extension manifest, bundle build, independent typecheck, and F5 launch/tasks. Bundle runtime dependencies; do not impose CLI Node 24 requirement on the extension host.
 
 ## 3. Verification and code commit
 
-- [ ] Run Phase 1 regression and full original suite separately from plugin unit and real-host suites.
-- [ ] Run root/extension typechecks and CLI/extension production builds.
-- [ ] Review requirements and code in separate read-only review passes; resolve findings.
-- [ ] Write extension startup/test instructions, design-pattern/reuse analysis, and verification evidence.
-- [ ] Commit implementation/configuration/documentation after green checks. Do not push, tag `p2`, or implement Phase 2 CLI plugins.
+- [x] Run Phase 1 regression and full original suite separately from plugin unit and real-host suites.
+- [x] Run root/extension typechecks and CLI/extension production builds.
+- [x] Review requirements and code in separate read-only review passes; resolve findings.
+- [x] Write extension startup/test instructions, design-pattern/reuse analysis, and verification evidence.
+- [x] Commit implementation/configuration/documentation after green checks. Do not push, tag `p2`, or implement Phase 2 CLI plugins.
+
+Visual evidence is complete: the user's real development-host screenshots show Explorer badges and text-editor Outline. Both are saved under `doc/images/`; see `doc/vscode-tdd.md`.
 
 Source-range contract: offsets refer to the original buffer, end offsets are exclusive, `selectionRange` points to the opening tag name and is contained within `range`. Tests must exercise root/container/leaf nodes, missing ids, repeated ids, nesting, same-line elements, CRLF, and edits that are not saved.

@@ -10,7 +10,9 @@
     "test:plugin:unit": "node --import tsx --test tests/plugin/*.test.ts",
     "test:plugin:host": "npm run build:extension && node scripts/test-vscode.mjs",
     "typecheck": "tsc --noEmit",
+    "typecheck:extension": "tsc -p extensions/vscode-svg/tsconfig.json --noEmit",
     "build": "tsc -p tsconfig.build.json",
+    "build:extension": "node extensions/vscode-svg/build.mjs",
     "cli": "tsx src/bootstrap/main.ts"
   },
   "engines": {
@@ -26,6 +28,7 @@
     "typescript": "7.0.2"
   },
   "dependencies": {
-    "@xmldom/xmldom": "0.9.12"
+    "@xmldom/xmldom": "0.9.12",
+    "sax": "1.6.1"
   }
 }

@@ -1,4 +1,4 @@
-import { DOMParser, DOMImplementation, XMLSerializer } from '@xmldom/xmldom';
+import { DOMImplementation, XMLSerializer } from '@xmldom/xmldom';
 import type { Element, Node, Document } from '@xmldom/xmldom';
 import type { SvgCodec } from '../../application/contracts/SvgCodec.js';
 import type { SvgImportResult } from '../../application/contracts/SvgImportResult.js';
@@ -6,6 +6,7 @@ import { EditorError } from '../../application/contracts/EditorError.js';
 import { ShapeTree } from '../../domain/tree/ShapeTree.js';
 import type { ShapeFactory } from '../../domain/factory/ShapeFactory.js';
 import type { SvgElement } from '../../domain/representation/SvgElement.js';
+import { XmlParser } from './XmlParser.js';
 
 export class SvgXmlCodec implements SvgCodec {
   static readonly namespace = 'http://www.w3.org/2000/svg';
@@ -13,7 +14,7 @@ export class SvgXmlCodec implements SvgCodec {
   decode(text: string): SvgImportResult {
     let document: Document;
     try {
-      document = new DOMParser({ onError: (_level, message) => { throw new Error(message); } }).parseFromString(text, 'image/svg+xml');
+      document = new XmlParser().parse(text);
     } catch { throw new EditorError('invalid SVG XML'); }
     if (document.doctype) throw new EditorError('SVG document types are unsupported');
     const root = document.documentElement;
