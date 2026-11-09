@@ -12,6 +12,7 @@ import { createShapeRegistry } from '../helpers/builtins.js';
 
 const root=fileURLToPath(new URL('../../',import.meta.url));
 const entry=fileURLToPath(new URL('../../src/bootstrap/main.ts',import.meta.url));
+const noPluginsConfig=fileURLToPath(new URL('../fixtures/no-plugins.config.json',import.meta.url));
 function runScript(lines: readonly string[], npm=false): Promise<{code:number|null;out:string;err:string}> {
   const executable=npm && process.platform==='win32' ? process.env.ComSpec ?? 'cmd.exe' : npm ? 'npm' : process.execPath;
   const args=npm ? process.platform==='win32' ? ['/d','/s','/c','npm run cli'] : ['run','cli'] : ['--import','tsx',entry];
@@ -112,11 +113,11 @@ test('real npm run cli consumes all piped lines, recovers from errors and execut
 const phase1CommandNames = ['init','read','save','canvas','create','delete','move','scale','set',
   'group','ungroup','addto','front','back','tree','show','help','undo','redo'];
 
-test('empty optional-plugin assembly exposes the complete Phase 1 command registry', async () => {
+test('empty plugin config exposes the complete Phase 1 command registry', async () => {
   const output:string[]=[];
   let index=0;
   const scripted:Terminal={async readLine(){return ['help','stats','dir'][index++];},writeLine(text){output.push(text);},close(){}};
-  await new ApplicationBootstrap(scripted).run();
+  await new ApplicationBootstrap(scripted,undefined,noPluginsConfig).run();
   assert.equal(output[0],"svg-editor 0.1 — type 'help' for commands");
   const helpLines=output.filter(line => phase1CommandNames.some(name => line === name || line.startsWith(name + ' ')));
   assert.equal(helpLines.length,phase1CommandNames.length);
@@ -125,7 +126,7 @@ test('empty optional-plugin assembly exposes the complete Phase 1 command regist
     ['error: unknown command: stats','error: unknown command: dir']);
 });
 
-test('empty optional-plugin assembly provides six shapes, canvas modes, create-in and set delegation', async () => {
+test('empty plugin config provides six shapes, canvas modes, create-in and set delegation', async () => {
   const lines=['init 100 100',
     'create rect r 1 2 3 4','create circle c 50 50 10','create ellipse e 10 20 5 6',
     'create line l 1 2 3 4','create text t 10 20 "hello"','create g group',
@@ -134,7 +135,7 @@ test('empty optional-plugin assembly provides six shapes, canvas modes, create-i
     'set r width -1','set r width Infinity','set r fill','tree'];
   const output:string[]=[]; let index=0;
   const terminal:Terminal={async readLine(){return lines[index++];},writeLine(text){output.push(text);},close(){}};
-  await new ApplicationBootstrap(terminal).run();
+  await new ApplicationBootstrap(terminal,undefined,noPluginsConfig).run();
   assert.equal(output[0],"svg-editor 0.1 — type 'help' for commands");
   assert.ok(output.includes('canvas 100x100'));
   assert.ok(output.includes('canvas resized to 200x300'));
