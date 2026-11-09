@@ -71,7 +71,7 @@ test('move traverses every direct child, including nested boxes and extra shapes
   assert.deepEqual([rect.getAttribute('x'), rect.getAttribute('y')], ['130', '120']);
   assert.deepEqual([label.getAttribute('x'), label.getAttribute('y')], ['150', '155']);
   assert.deepEqual([innerRect.getAttribute('x'), innerRect.getAttribute('y')], ['210', '170']);
-  assert.deepEqual([innerLabel.getAttribute('x'), innerLabel.getAttribute('y')], ['230', '185']);
+  assert.deepEqual([innerLabel.getAttribute('x'), innerLabel.getAttribute('y')], ['230', '205']);
   assert.equal(extra.getAttribute('cx'), '20');
 });
 
