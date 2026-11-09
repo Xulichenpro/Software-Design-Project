@@ -48,7 +48,7 @@ function setup(
   handlers: readonly (readonly [string, AttributeHandler])[] = [],
 ): Fixture {
   const env = createReceiverEnvironment({ initialized, files, commands: createHelpCommands(), handlers });
-  return { ...env, executor: new CommandExecutor(observer), observer };
+  return { ...env, executor: new CommandExecutor(observer, env.tree), observer };
 }
 
 const undo = () => new UndoCommand();

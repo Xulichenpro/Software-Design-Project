@@ -266,6 +266,9 @@ export abstract class TreeDecorator {
 }
 ```
 
+- `CommandExecutor` 构造签名为 `(observer?: DocumentObserver, document?: DocumentView)`；
+  `document` 用于编辑/历史命令的前后快照采集。`ApplicationBootstrap` 传入共享
+  `ShapeTree`；没有 document 时事件快照为空（测试专用）。
 - `TreeDecoratorRegistry` 实现 `DocumentObserver`，按注册顺序转发；单个 decorator 抛错
   被隔离，不破坏已提交状态。
 - `TreeRenderer` 先生成基础行，再按注册顺序拼接非空标签；每个非空前缀前加一个空格，
