@@ -56,4 +56,4 @@ $env:VSCODE_TEST_DOWNLOAD = '1'
 npm run test:plugin:host
 ```
 
-架构、复用与设计模式分析见仓库的 `doc/README.md`，测试先行记录见 `doc/vscode-tdd.md`。
+宿主职责、注册调用过程、设计模式及 Phase 1 复用分析见 [Phase 2 主报告](../../doc/README.md)，测试先行和验证结果见 [TDD 记录](../../doc/vscode-tdd.md)。
