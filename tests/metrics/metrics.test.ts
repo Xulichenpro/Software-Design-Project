@@ -29,7 +29,7 @@ test('metrics script is executable and writes a git-history-derived kernel/assem
   const info = await stat(script);
   assert.ok(info.isFile());
   const source = await readFile(script, 'utf8');
-  assert.match(source, /docs/);
+  assert.match(source, /docs\/metrics/);
   assert.match(source, /metrics/);
   assert.match(source, /git/i);
 

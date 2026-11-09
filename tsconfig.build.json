@@ -5,5 +5,5 @@
     "outDir": "dist"
   },
   "include": ["src/**/*.ts", "plugins/**/src/**/*.ts"],
-  "exclude": ["tests", "plugins/*/tests", "extensions", "dist"]
+  "exclude": ["tests", "extensions", "dist"]
 }

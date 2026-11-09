@@ -47,7 +47,7 @@ text。Phase 1 §4.4/§6.1 定义语义；`data-kind="box"` 用于读回，未�
 
 ## Verification
 
-- `plugins/box/tests/*`：创建、tree、move、set fill/label、undo/redo、delete、嵌套、
+- `tests/plugins/box/*`：创建、tree、move、set fill/label、undo/redo、delete、嵌套、
   读回、降级、重复 id、结构拒绝。
 - `tests/acceptance/*`：Phase 1 §6.1 box 会话完整复现。
 - `tests/infrastructure/svg.test.ts`：data-kind 与 g style 往返。

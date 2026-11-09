@@ -4,8 +4,8 @@ import { test } from 'node:test';
 import type {
   ArgumentToken, CommandRegistration, PluginContext, ShapeRegistration,
 } from '../../../src/extension-api/index.js';
-import plugin from '../src/index.js';
-import { StatsCommand } from '../src/StatsCommand.js';
+import plugin from '../../../plugins/stats/src/index.js';
+import { StatsCommand } from '../../../plugins/stats/src/StatsCommand.js';
 import { TestDocument } from './fixtures.js';
 
 class RecordingContext implements PluginContext {
@@ -30,7 +30,7 @@ test('the stats package activates exactly one command named stats', async () => 
 test('the stats manifest declares exactly the commands it registers', async () => {
   const context = new RecordingContext();
   await plugin.activate(context);
-  const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as {
+  const manifest = JSON.parse(await readFile(new URL('../../../plugins/stats/package.json', import.meta.url), 'utf8')) as {
     name?: string;
     contributes?: { commands?: readonly string[] };
   };

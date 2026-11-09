@@ -53,7 +53,7 @@ Phase 2 要求 `modified-star` 与 `(box)` 两个标签并存且互不感知；�
 
 ## Verification
 
-- `plugins/tree-star/tests/*`：编辑→保存→再编辑→undo 各分支、祖先/根、新建、删除、
+- `tests/plugins/tree-star/*`：编辑→保存→再编辑→undo 各分支、祖先/根、新建、删除、
   save/read 失败保留。
 - `tests/application/tree/TreeRenderer.test.ts`：无标签基线逐字节不变、顺序拼接。
 - `tests/acceptance/*`：Phase 1 `tree` 输出在禁用标签时逐字节不变。

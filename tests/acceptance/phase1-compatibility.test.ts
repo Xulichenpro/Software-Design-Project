@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { SvgXmlCodec } from '../../src/infrastructure/svg/SvgXmlCodec.js';
 import { createQueryReceiver, createShapeRegistry } from '../helpers/builtins.js';
 import { ApplicationBootstrap } from '../../src/bootstrap/ApplicationBootstrap.js';
 import type { Terminal } from '../../src/application/contracts/Terminal.js';
 
 const asset = (name: string) => readFile(new URL(`../assets/${name}`, import.meta.url), 'utf8');
+const noPluginsConfig = fileURLToPath(new URL('../fixtures/no-plugins.config.json', import.meta.url));
 const expectedTree = [
   'svg (320x200)',
   '└── g#flow',
@@ -31,7 +33,11 @@ test('Phase 1 CLI read, move, undo and redo retain their existing visible behavi
     writeLine(line) { output.push(line); },
     close() {},
   };
-  await new ApplicationBootstrap(terminal, { read: () => asset('phase1-nested.svg'), async write() {} }).run();
+  await new ApplicationBootstrap(
+    terminal,
+    { read: () => asset('phase1-nested.svg'), async write() {} },
+    noPluginsConfig,
+  ).run();
   assert.deepEqual(output, [
     "svg-editor 0.1 — type 'help' for commands",
     'warning: assigned id text1 to unnamed <text>',

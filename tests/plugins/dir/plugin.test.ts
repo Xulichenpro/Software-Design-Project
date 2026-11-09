@@ -5,8 +5,8 @@ import { QueryCommand } from '../../../src/extension-api/index.js';
 import type {
   ArgumentToken, CommandRegistration, PluginContext, ShapeRegistration,
 } from '../../../src/extension-api/index.js';
-import plugin from '../src/index.js';
-import { DirCommand } from '../src/DirCommand.js';
+import plugin from '../../../plugins/dir/src/index.js';
+import { DirCommand } from '../../../plugins/dir/src/DirCommand.js';
 import { ExistingDocument } from './fixtures.js';
 
 class RecordingContext implements PluginContext {
@@ -32,7 +32,7 @@ test('the dir package activates exactly one command named dir', async () => {
 test('the dir manifest declares exactly the commands it registers', async () => {
   const context = new RecordingContext();
   await plugin.activate(context);
-  const manifest = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as {
+  const manifest = JSON.parse(await readFile(new URL('../../../plugins/dir/package.json', import.meta.url), 'utf8')) as {
     name?: string;
     contributes?: { commands?: readonly string[] };
   };

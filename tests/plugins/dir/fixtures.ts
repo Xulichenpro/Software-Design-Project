@@ -5,7 +5,7 @@ import type {
   CommandResult, DocumentView, ShapeContainer,
 } from '../../../src/extension-api/index.js';
 import { EditRecord } from '../../../src/application/records/EditRecord.js';
-import type { DirectoryEntry, DirectoryReader } from '../src/DirectoryReader.js';
+import type { DirectoryEntry, DirectoryReader } from '../../../plugins/dir/src/DirectoryReader.js';
 
 /** A configurable stand-in for the filesystem-facing `DirectoryReader` port. */
 export class FakeDirectoryReader implements DirectoryReader {

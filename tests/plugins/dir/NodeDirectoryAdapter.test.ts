@@ -3,9 +3,9 @@ import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import type { DirectoryEntry } from '../src/DirectoryReader.js';
-import { NodeDirectoryAdapter } from '../src/NodeDirectoryAdapter.js';
-import { DirCommand } from '../src/DirCommand.js';
+import type { DirectoryEntry } from '../../../plugins/dir/src/DirectoryReader.js';
+import { NodeDirectoryAdapter } from '../../../plugins/dir/src/NodeDirectoryAdapter.js';
+import { DirCommand } from '../../../plugins/dir/src/DirCommand.js';
 
 function byName(items: readonly DirectoryEntry[]): Map<string, DirectoryEntry> {
   return new Map(items.map(item => [item.name, item]));

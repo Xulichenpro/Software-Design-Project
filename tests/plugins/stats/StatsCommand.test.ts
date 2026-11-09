@@ -5,7 +5,7 @@ import type { DocumentObserver, DocumentEvent } from '../../../src/extension-api
 import { CommandExecutor } from '../../../src/application/execution/CommandExecutor.js';
 import { UndoCommand } from '../../../src/application/commands/history/UndoCommand.js';
 import { RedoCommand } from '../../../src/application/commands/history/RedoCommand.js';
-import { StatsCommand } from '../src/StatsCommand.js';
+import { StatsCommand } from '../../../plugins/stats/src/StatsCommand.js';
 import {
   ProbeEditCommand, TestContainer, TestDocument, TestRoot, container, documentWith, leaf,
 } from './fixtures.js';

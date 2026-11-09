@@ -93,7 +93,7 @@ test('real npm run cli consumes all piped lines, recovers from errors and execut
   try {
     const path=join(dir,'saved.svg');
     const result=await runScript([
-      'help','undo','redo','read '+JSON.stringify(join(dir,'missing.svg')),'init','create box bad',
+      'help','undo','redo','read '+JSON.stringify(join(dir,'missing.svg')),'init','create hexagon bad',
       'create rect alive 1 2 3 4','move alive 1 2','save '+JSON.stringify(join(dir,'missing-dir','bad.svg')),
       'undo','save '+JSON.stringify(path),'undo','create g after','tree',
     ],true);
@@ -101,7 +101,7 @@ test('real npm run cli consumes all piped lines, recovers from errors and execut
     assert.ok(result.out.includes("svg-editor 0.1 — type 'help' for commands"));
     assert.equal((result.out.match(/error:/g)??[]).length,6);
     assert.ok(result.out.includes("error: no document. use 'init' or 'read' first"));
-    assert.ok(result.out.includes('unknown shape type: box')); assert.ok(result.out.includes('cannot write file:'));
+    assert.ok(result.out.includes('unknown shape type: hexagon')); assert.ok(result.out.includes('cannot write file:'));
     assert.ok(result.out.includes('rect#alive moved back to (1,2)')); assert.ok(result.out.includes('error: undo not allowed after io command'));
     assert.ok(result.out.includes('g#after created')); assert.match(result.out,/└── g#after/);
     const tree=decode(await readFile(path,'utf8')); assert.equal(tree.shapes.length,1); assert.equal(tree.findShape('alive').getAttribute('x'),'1');

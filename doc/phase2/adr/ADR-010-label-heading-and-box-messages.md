@@ -43,5 +43,5 @@ Phase 1 §6.1 固定。若继续用一个 `label`，必然有一侧不匹配。
 ## Verification
 
 - `tests/acceptance/phase1-compatibility.test.ts`：Phase 1 输出不变。
-- `plugins/box/tests/messages.test.ts`：create/move/set fill/label/undo 文案。
+- `tests/plugins/box/messages.test.ts`：create/move/set fill/label/undo 文案。
 - `tests/application/tree/TreeRenderer.test.ts`：heading 与 `(box)` 拼接。
