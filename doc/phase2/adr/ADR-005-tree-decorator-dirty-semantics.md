@@ -33,7 +33,8 @@ Phase 2 要求 `modified-star` 与 `(box)` 两个标签并存且互不感知；�
 4. `DocumentEvent` 携带不可变前后快照（自身内容、父节点、有序孩子）；编辑命令由执行器
    采集前后快照，查询不采集。save/read/init/resize 由结果显式携带事件种类。
 5. 标签按加载/注册顺序拼接；每个非空后缀前加一个空格；无标签时不追加任何字符。
-   `BoxTypeDecorator` 只按 `kind === "box"` 返回 `(box)`，不感知星号。
+   `TreeRow.base` 是**完整的基础输出行**（含树连接前缀，不含标签），渲染器在它后面追加
+   标签。`BoxTypeDecorator` 只按 `kind === "box"` 返回 `(box)`，不感知星号。
 6. 同一行两个标签的顺序由插件加载顺序决定，A/B 配置必须一致。
 
 ## Consequences

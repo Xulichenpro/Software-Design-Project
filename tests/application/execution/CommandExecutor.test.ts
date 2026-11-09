@@ -290,15 +290,16 @@ test('failed barrier commands notify nothing and preserve history', async () => 
 
 test('observer exceptions never change command results, history movement or barrier semantics', async () => {
   const throwing: DocumentObserver = { onCommitted() { throw new Error('observer failed'); } };
-  const f = setup(true, new MemoryFiles(), throwing);
-  const result = await f.executor.execute(new MoveCommand(f.editor, { id: 'r', dx: 3, dy: 4 }));
+  const env = createReceiverEnvironment({ initialized: true, files: new MemoryFiles() });
+  const executor = new CommandExecutor(throwing, env.tree);
+  const result = await executor.execute(new MoveCommand(env.editor, { id: 'r', dx: 3, dy: 4 }));
   assert.deepEqual(result.lines, ['rect#r moved to (4,6)']);
-  await f.executor.execute(undo());
-  assert.equal(f.tree.findShape('r').getAttribute('x'), '1');
-  await f.executor.execute(redo());
-  assert.equal(f.tree.findShape('r').getAttribute('x'), '4');
-  await f.executor.execute(new SaveCommand(f.document, 'out.svg'));
-  await assert.rejects(f.executor.execute(undo()), /not allowed after io command/);
+  await executor.execute(undo());
+  assert.equal(env.tree.findShape('r').getAttribute('x'), '1');
+  await executor.execute(redo());
+  assert.equal(env.tree.findShape('r').getAttribute('x'), '4');
+  await executor.execute(new SaveCommand(env.document, 'out.svg'));
+  await assert.rejects(executor.execute(undo()), /not allowed after io command/);
 });
 
 test('an attribute handler failure keeps the document, history and observer state unchanged', async () => {

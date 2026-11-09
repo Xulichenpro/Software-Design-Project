@@ -257,7 +257,7 @@ export interface TreeRow {
   readonly id: string | undefined;    // 根行为 undefined
   readonly kind: string | undefined;
   readonly isRoot: boolean;
-  readonly base: string;             // 基础行，不含标签
+  readonly base: string;             // 完整基础行（含树连接前缀，不含标签）
 }
 export abstract class TreeDecorator {
   abstract readonly name: string;

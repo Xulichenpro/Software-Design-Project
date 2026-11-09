@@ -70,7 +70,7 @@ test('editStructure validates the final topology before committing any move', ()
     placements: [{ shape: guard, parent: tree.root, index: 1 }],
   }), /structure rejected/);
 
-  const topology = guard.lastTopology;
+  const topology = (guard as unknown as { lastTopology: ShapeTopology | undefined }).lastTopology;
   assert.ok(topology, 'validateStructure receives a topology');
   assert.equal(topology.parentOf(guard), tree.root);
   assert.deepEqual(topology.childrenOf(tree.root).map(shape => shape.id), ['box', 'guard']);

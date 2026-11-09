@@ -72,7 +72,7 @@ test('the root row carries no id/kind, isRoot and the Phase 1 canvas base line',
   assert.equal(groupRow.id, 'flow');
   assert.equal(groupRow.kind, 'g');
   assert.equal(groupRow.isRoot, false);
-  assert.equal(groupRow.base, 'g#flow');
+  assert.equal(groupRow.base, '└── g#flow');
 });
 
 test('labels concatenate in registration order with exactly one leading space per non-empty suffix', async () => {

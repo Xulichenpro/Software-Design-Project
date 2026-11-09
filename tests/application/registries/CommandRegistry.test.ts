@@ -25,7 +25,7 @@ function registration(name: string, calls?: { args?: readonly ArgumentToken[]; s
   return Object.freeze({
     name,
     help: `${name} help`,
-    create(args, services) {
+    create(args: readonly ArgumentToken[], services: CommandServices) {
       if (calls) { calls.args = args; calls.services = services; }
       return new ProbeCommand([`${name}:${args.map(arg => arg.value).join(',')}`]);
     },
