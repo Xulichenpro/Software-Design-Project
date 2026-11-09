@@ -68,7 +68,7 @@ const roles = new Map([
   ['src/bootstrap/codeAssembly.ts', '方式 A 顶层代码装配入口（阶段 1 为空）'],
   ['src/bootstrap/main.ts', '进程入口与 --config 选择'],
   ['src/extension-api/index.ts', '插件唯一公开导入入口（只做 re-export）'],
-  ['scripts/metrics.mjs', '从 Git 历史生成 doc/metrics 报告'],
+  ['scripts/metrics.mjs', '从 Git 历史生成 docs/metrics 报告'],
   ['plugins.config.json', '方式 B 插件配置（当前为空配置）'],
   ['package.json', '测试、metrics、构建脚本'],
   ['tsconfig.json', 'TypeScript 编译范围'],
@@ -136,7 +136,7 @@ const output = [];
 output.push(`# Phase 2 指标报告（${from} → ${to}）`);
 output.push('');
 output.push('> 本报告由 `scripts/metrics.mjs` **从 Git 历史自动生成**（Generated from git history），请勿手工编辑。');
-output.push(`> 生成命令：\`node scripts/metrics.mjs --from ${from} --to ${to}\`；产物目录：\`doc/metrics/\`。`);
+output.push(`> 生成命令：\`node scripts/metrics.mjs --from ${from} --to ${to}\`；产物目录：\`docs/metrics/\`。`);
 output.push('> 范围：`git diff` 统计；已排除 `node_modules`、`dist`；VSCode 扩展单列，不计入 CLI 增量。');
 output.push('');
 output.push('## 概览');
@@ -171,7 +171,7 @@ output.push('本文件由脚本生成；数字来自 Git 历史与当前工作�
 output.push('');
 
 const fileName = `metrics-${from.replace(/[^A-Za-z0-9._-]+/g, '-')}-${to.replace(/[^A-Za-z0-9._-]+/g, '-')}.md`;
-const directory = join(root, 'doc', 'metrics');
+const directory = join(root, 'docs', 'metrics');
 await mkdir(directory, { recursive: true });
 const target = join(directory, fileName);
 await writeFile(target, output.join('\n'), 'utf8');

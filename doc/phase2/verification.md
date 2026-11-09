@@ -81,7 +81,7 @@ npm run test:plugin:unit
 node scripts/metrics.mjs --from final --to HEAD
 ```
 
-- 输出写入 `doc/metrics/`；数字由脚本从 git 历史生成，不接受手填。
+- 输出写入 `docs/metrics/`；数字由脚本从 git 历史生成，不接受手填。
 - 按“内核 / 装配处 / 插件”分类；VSCode 扩展单独列出，不混入 CLI 增量；依赖包与
   构建产物排除。
 

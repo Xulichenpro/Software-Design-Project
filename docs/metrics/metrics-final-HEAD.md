@@ -1,7 +1,7 @@
 # Phase 2 指标报告（final → HEAD）
 
 > 本报告由 `scripts/metrics.mjs` **从 Git 历史自动生成**（Generated from git history），请勿手工编辑。
-> 生成命令：`node scripts/metrics.mjs --from final --to HEAD`；产物目录：`doc/metrics/`。
+> 生成命令：`node scripts/metrics.mjs --from final --to HEAD`；产物目录：`docs/metrics/`。
 > 范围：`git diff` 统计；已排除 `node_modules`、`dist`；VSCode 扩展单列，不计入 CLI 增量。
 
 ## 概览
@@ -113,7 +113,7 @@
 |---|---|---:|---:|---:|
 | `package.json` | 测试、metrics、构建脚本 | 16 | 2 | 37 |
 | `plugins.config.json` | 方式 B 插件配置（当前为空配置） | 6 | 0 | 6 |
-| `scripts/metrics.mjs` | 从 Git 历史生成 doc/metrics 报告 | 178 | 0 | 178 |
+| `scripts/metrics.mjs` | 从 Git 历史生成 docs/metrics 报告 | 178 | 0 | 178 |
 | `scripts/test-vscode.mjs` | 仓库脚本 | 34 | 0 | 34 |
 | `tsconfig.json` | TypeScript 编译范围 | 1 | 1 | 13 |
 
@@ -136,6 +136,7 @@
 
 区间 `final..HEAD` 的提交标题（最新在前）：
 
+- chore: move metrics reports into doc and drop empty factory dirs
 - feat: add stats and dir command plugins
 - test: fix contradictory stats plugin assertions
 - docs: exclude assembly files from kernel zero-diff check

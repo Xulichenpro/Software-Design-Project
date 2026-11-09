@@ -29,17 +29,17 @@ test('metrics script is executable and writes a git-history-derived kernel/assem
   const info = await stat(script);
   assert.ok(info.isFile());
   const source = await readFile(script, 'utf8');
-  assert.match(source, /doc\/metrics/);
+  assert.match(source, /docs\/metrics/);
   assert.match(source, /metrics/);
   assert.match(source, /git/i);
 
   const result = await runMetrics();
   assert.equal(result.code, 0, `metrics failed:\n${result.err}\n${result.out}`);
 
-  const directory = join(root, 'doc', 'metrics');
+  const directory = join(root, 'docs', 'metrics');
   const entries = await readdir(directory, { withFileTypes: true });
   const files = entries.filter(entry => entry.isFile());
-  assert.ok(files.length > 0, 'doc/metrics must contain a generated report');
+  assert.ok(files.length > 0, 'docs/metrics must contain a generated report');
 
   let text = '';
   for (const entry of files) text += await readFile(join(directory, entry.name), 'utf8');
