@@ -35,10 +35,11 @@ export class BoxShape extends ShapeProvider implements ShapeContainer {
   static createFromArguments(
     id: string,
     args: readonly string[],
-    _quoted: readonly boolean[] | undefined,
+    quoted: readonly boolean[] | undefined,
     context: ShapeCreationContext,
   ): BoxShape {
     if (args.length !== 5) throw new Error('invalid parameters for box');
+    if (quoted && !quoted[4]) throw new Error('box title must be quoted');
     const x = numericArgument(args, 0);
     const y = numericArgument(args, 1);
     const width = numericArgument(args, 2);

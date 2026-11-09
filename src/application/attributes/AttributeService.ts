@@ -6,7 +6,6 @@ import type { AttributeEditRequest, AttributePatch, AttributeWrite } from '../co
 import type { EditOutcome } from '../receivers/EditOutcome.js';
 import type { AttributeHandlerRegistry } from '../registries/AttributeHandlerRegistry.js';
 import type { AttributeHandler } from './AttributeHandler.js';
-import type { AttributeOutcome } from './AttributeOutcome.js';
 import type { AttributeTransaction } from './AttributeTransaction.js';
 import type { ReadonlyShape } from './ReadonlyShape.js';
 
@@ -47,15 +46,20 @@ export class AttributeService {
     this.validateDefaultValue(request.name, request.value);
     const before = target.getAttribute(request.name);
     target.setAttribute(request.name, request.value);
-    const forward = freezePatch(
-      [{ shapeId: target.id, name: request.name, value: request.value }],
-      [`${target.label} updated: ${target.attributeSummary(request.name, request.value)}`],
-    );
-    const inverse = freezePatch(
-      [{ shapeId: target.id, name: request.name, value: before }],
-      [`${target.label} updated: ${target.attributeSummary(request.name, before)}`],
-    );
-    return { record: new AttributeEditRecord(forward, inverse), result: { lines: forward.lines } };
+    try {
+      const forward = freezePatch(
+        [{ shapeId: target.id, name: request.name, value: request.value }],
+        [`${target.label} updated: ${target.attributeSummary(request.name, request.value)}`],
+      );
+      const inverse = freezePatch(
+        [{ shapeId: target.id, name: request.name, value: before }],
+        [`${target.label} updated: ${target.attributeSummary(request.name, before)}`],
+      );
+      return { record: new AttributeEditRecord(forward, inverse), result: { lines: forward.lines } };
+    } catch (error) {
+      this.rollback([{ shapeId: target.id, name: request.name, before, value: request.value }]);
+      throw error;
+    }
   }
 
   private applyHandler(
@@ -72,22 +76,21 @@ export class AttributeService {
         writes.push({ shapeId, name, before, value });
       },
     };
-    let outcome: AttributeOutcome;
     try {
-      outcome = handler.apply(target, request, transaction);
+      const outcome = handler.apply(target, request, transaction);
+      const forward = freezePatch(
+        writes.map(write => ({ shapeId: write.shapeId, name: write.name, value: write.value })),
+        outcome.forwardLines,
+      );
+      const inverse = freezePatch(
+        [...writes].reverse().map(write => ({ shapeId: write.shapeId, name: write.name, value: write.before })),
+        outcome.inverseLines,
+      );
+      return { record: new AttributeEditRecord(forward, inverse), result: { lines: forward.lines } };
     } catch (error) {
       this.rollback(writes);
       throw error;
     }
-    const forward = freezePatch(
-      writes.map(write => ({ shapeId: write.shapeId, name: write.name, value: write.value })),
-      outcome.forwardLines,
-    );
-    const inverse = freezePatch(
-      [...writes].reverse().map(write => ({ shapeId: write.shapeId, name: write.name, value: write.before })),
-      outcome.inverseLines,
-    );
-    return { record: new AttributeEditRecord(forward, inverse), result: { lines: forward.lines } };
   }
 
   private rollback(writes: readonly RecordedWrite[]): void {

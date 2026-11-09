@@ -8,6 +8,8 @@ export interface ShapeSnapshot {
   /** Own content only; child content is represented by `childrenIds`. */
   readonly content: string;
   readonly parentId: string | undefined;
+  /** Position within the parent's children, including children of the SVG root. */
+  readonly siblingIndex?: number;
   readonly childrenIds: readonly string[];
 }
 

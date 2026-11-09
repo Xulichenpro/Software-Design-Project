@@ -12,7 +12,7 @@ export function snapshotDocument(document: DocumentView): ReadonlyMap<string, Sh
     return snapshots;
   }
   const visit = (shapes: readonly Shape[]) => {
-    for (const shape of shapes) {
+    for (const [siblingIndex, shape] of shapes.entries()) {
       const description = shape.describe();
       const parent = shape.parent;
       const parentId = parent && 'id' in parent ? String(parent.id) : undefined;
@@ -22,6 +22,7 @@ export function snapshotDocument(document: DocumentView): ReadonlyMap<string, Sh
         tag: shape.tag,
         content: [description.heading, description.geometry, description.style].filter(Boolean).join('  '),
         parentId,
+        siblingIndex,
         childrenIds: Object.freeze(shape.descendants.map(child => child.id)),
       }));
       visit(shape.descendants);
