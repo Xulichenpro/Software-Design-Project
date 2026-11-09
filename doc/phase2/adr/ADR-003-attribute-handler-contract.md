@@ -40,6 +40,8 @@ Phase 1 的 `set` 在 `CommandFactory` 中预校验数值/引号，`ShapeEditorR
    ```
 4. 首次请求执行返回 `EditOutcome<AttributeEditRecord>`；undo/redo 通过原 receiver 重放
    patch，返回 patch 的 `lines`，不重新选择/执行 handler。
+   写入、正反输出物化及记录构造属于同一成功边界；getter/iterator 或文案生成失败也回滚。
+   patch 重放同样记录每次写入前的值，后续写入失败时反序恢复，历史和观察事件保持不变。
 5. 默认路径生成 Phase 1 文案：`<label> updated: <attributeSummary>`。默认路径的
    数值、非负、`text` 引号校验由 `AttributeService` 执行，`set` 注册项不再预校验。
 6. box handler 的固定文案：

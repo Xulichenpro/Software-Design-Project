@@ -52,7 +52,7 @@ Phase 2 要求同一插件既能用代码装配（A），也能用 `plugins.conf
 
 ## Verification
 
-- `tests/plugin/loader.test.ts`：四条失败、重复、回滚、disabled、options、顺序。
-- `tests/plugin/host.test.ts`：暂存/整包接纳/清单比较。
-- `scripts/verify-ab.mjs`：A/B 双装配逐字节一致。
+- `tests/plugin/PluginLoader.test.ts`：四条失败、重复、回滚、disabled、options、顺序。
+- `tests/plugin/PluginHost.test.ts`：暂存/整包接纳/清单比较。
+- `tests/acceptance/transcripts.test.ts`：A/B 双装配逐字节一致。
 - `rg -n "import|require|switch" src/bootstrap` 人工检查无具体插件硬编码。

@@ -43,5 +43,5 @@ A（改一个顶层装配文件）与 B（只改配置文件）必须走同一�
 
 - `tests/application/registries/*.test.ts`：四条注册路径、重名、只安装一次、只读查询。
 - `tests/acceptance/bootstrap.test.ts`：内置装配、Phase 1 回归。
-- `tests/plugin/loader.test.ts`：A/B 共用路径、失败回滚。
+- `tests/plugin/PluginLoader.test.ts`、`tests/plugin/PluginHost.test.ts`：A/B 共用路径、失败回滚。
 - `git diff C^ C -- src/ plugins/ ':(exclude)plugins/<新增>'` 为空。

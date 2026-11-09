@@ -185,15 +185,21 @@ Node 模块解析；`enabled:false` 完全跳过；`options` 原样传给 `activ
 
 ### 3.4 零内核差异
 
-设 `C` 为接入插件的那次提交，`N` 为新增插件包目录。装配层
-（`src/bootstrap/codeAssembly.ts`、`plugins.config.json`）允许变化，不计入判据：
+设 `C` 为接入插件的提交，`N` 为新增插件包目录。下面只检查共同的零内核/既有插件差异，
+不能代替 A/B 各自的增量判据：
 
 ```bash
 git diff C^ C -- src/ plugins/ ":(exclude)$N" ":(exclude)src/bootstrap/codeAssembly.ts"
 # 输出必须为空
 ```
 
-阶段 2/3/4 的实际检查均为空；A/B 同输入的 stdout 逐字节一致。
+原阶段 2/3/4 的共同检查均为空；A 只允许改一个顶层装配文件，B 不允许改任何已有运行源码。
+此前接入提交同时改了装配与配置，只能证明 A 和共同条件。B 的独立提交、完整差异与实际
+运行结果见 [配置装配演示](phase2/config-only-demo.md)。
+
+固定输入、实际 `final` 基线、原始 stdout、期望 SVG 与 A/B 回放见
+[doc/transcript](transcript/README.md)。配置装配仅在选中 B 时读取模块；代码装配模块仅在选中 A 后加载，
+因此 disabled/空配置不受代码装配插件缺失或求值错误影响。
 
 ## 4. 模块依赖图（PlantUML）
 
@@ -350,11 +356,11 @@ package "Plugins" {
 
 | 命令 | 结果 |
 |---|---|
-| `npm run test:phase1` | 178/178 通过 |
-| `npm run test:cli:plugins` | 91/91 通过 |
-| `npm run test:plugin:unit` | 39/39 通过 |
-| `npm run test:plugin:host` | 15/15 通过（VS Code 1.145.2） |
-| `npm run typecheck` / `npm run build` / `npm run typecheck:extension` | 全部通过 |
+| `npm run test:phase1` | 200/200 通过（含实际 final 基线、A/B 固定回放和历史指标测试） |
+| `npm run test:cli:plugins` | 98/98 通过 |
+| `npm run test:plugin:unit` | 45/45 通过 |
+| `npm run test:plugin:host` | 15/15 通过（真实本机 VS Code 宿主） |
+| `npm run typecheck` / `npm run build` / `npm run typecheck:extension` / `npm run build:extension` | 全部通过 |
 
 测试目录统一在 `tests/`；插件包不携带测试。`dir` 同时覆盖 `DirectoryReader` 替身与真实
 临时目录适配器；box 覆盖 data-kind 往返/降级/拒绝；tree-star 覆盖编辑→保存→再编辑→undo
@@ -365,9 +371,13 @@ package "Plugins" {
 [`scripts/metrics.mjs`](../scripts/metrics.mjs) 从 Git 历史生成
 [docs/metrics/metrics-final-HEAD.md](../docs/metrics/metrics-final-HEAD.md)：
 
-- 文件清单与职责、按内核/装配/插件三类拆分的新增/删除/当前行数；
-- **圈复杂度增量**（决策点计数代理：if/for/while/case/catch/&&/||/三元 `?`）；
+- 文件清单与职责、按内核/装配/插件三类拆分的新增/删除/两端行数；
+- 两端内容均取自报告列出的不可变 Git commit/tree/blob，不读取工作树；
+- **圈复杂度增量**使用锁定 TypeScript 7.0.2 的 AST：有实现的函数/方法基数与可执行决策点求和；类型、可选字段、字符串、注释不增加复杂度；
 - VSCode 扩展单列，不计入 CLI 增量；生成命令写入报告。
+
+报告记录发布前最后源码提交；最终标签只追加验证文档/报告，核验范围内的源码树保持一致。
+使用报告的 `--from/--to` 可从任意工作树重算；`--output` 可将校验产物写入独立临时目录。
 
 ### 8.3 迭代报告与架构对比
 

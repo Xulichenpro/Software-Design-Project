@@ -180,7 +180,7 @@ box 插件接入；A/B 两种装配各演示一次；box 会话完整复现。
   脚本随仓库提交，数字由脚本生成。
 - 架构对比图（Phase 1 → Phase 2）；迭代报告。
 - 最终全量测试：Phase 1、插件单元、VSCode host、typecheck、build、A/B/基线/零差异。
-- 打 tag `p2`；不移动已有 tag。
+- 打 tag `p2`；默认不移动已有 tag。本轮用户明确授权撤换旧 `p2`，例外记录见 [verification.md](verification.md)。
 
 ### 完成判据
 
