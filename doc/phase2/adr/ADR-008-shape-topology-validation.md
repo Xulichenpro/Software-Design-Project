@@ -45,5 +45,5 @@ Box 的 `validateStructure()` 必须拒绝“单独删除/移走必要子部件�
 
 - `tests/domain/ShapeTree.test.ts`：最终拓扑、整体删除、移走/删除必要部件、目标容器、
   失败无突变。
-- `plugins/box/tests/structure.test.ts`：必要部件保护、嵌套、额外子节点。
+- `tests/plugins/box/structure.test.ts`：必要部件保护、嵌套、额外子节点。
 - `tests/acceptance/*`：结构命令失败后历史与树不变。

@@ -60,7 +60,7 @@ test('the box package activates exactly one shape, one attribute handler and one
 test('package.json declares exactly the shape, attribute and decorator names the plugin registers', async () => {
   const context = new RecordingContext();
   await plugin.activate(context);
-  const pkg = JSON.parse(await readFile(new URL('../package.json', import.meta.url), 'utf8')) as {
+  const pkg = JSON.parse(await readFile(new URL('../../../plugins/box/package.json', import.meta.url), 'utf8')) as {
     name?: string;
     contributes?: {
       shapes?: readonly string[];

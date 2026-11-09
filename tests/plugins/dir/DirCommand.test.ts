@@ -5,7 +5,7 @@ import type { DocumentEvent, DocumentObserver } from '../../../src/extension-api
 import { CommandExecutor } from '../../../src/application/execution/CommandExecutor.js';
 import { UndoCommand } from '../../../src/application/commands/history/UndoCommand.js';
 import { RedoCommand } from '../../../src/application/commands/history/RedoCommand.js';
-import { DirCommand } from '../src/DirCommand.js';
+import { DirCommand } from '../../../plugins/dir/src/DirCommand.js';
 import {
   ExistingDocument, FakeDirectoryReader, ProbeEditCommand, entries,
 } from './fixtures.js';

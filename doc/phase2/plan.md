@@ -81,9 +81,9 @@ stats、dir 以独立插件包接入；目录访问适配器与独立测试完�
 
 ### 测试范围（先写）
 
-- `plugins/stats/tests/*`：空文档、叶子顺序、容器计数、box 容器（用 g 替身或节点 3
+- `tests/plugins/stats/*`：空文档、叶子顺序、容器计数、box 容器（用 g 替身或节点 3
   后补 box 用例）、未 init 错误、help、只读/历史不变。
-- `plugins/dir/tests/*`：混合文件/目录、空目录、隐藏项、排序稳定性、读取失败、
+- `tests/plugins/dir/*`：混合文件/目录、空目录、隐藏项、排序稳定性、读取失败、
   符号链接/特殊项、无文档可用、有文档成功/失败不改历史。
 - `tests/plugin/fixtures/*`：用于 loader 成功/失败/重复/回滚/disabled/options 的
   测试插件；或复用 stats/dir 包。
@@ -99,7 +99,7 @@ stats、dir 以独立插件包接入；目录访问适配器与独立测试完�
 - `plugins/dir`：`DirectoryReader`、`NodeDirectoryAdapter`、`DirCommand`、`package.json`
   （contributes.commands=["dir"]）、`activate`。输出按 ADR-009 两个空格。
 - 装配：`codeAssembly.ts` 加载 stats/dir；`plugins.config.json` 同步；A/B 输出一致。
-- 插件独立测试脚本：`package.json` 的 `test:plugin` 纳入 `plugins/*/tests`。
+- 插件独立测试脚本：`package.json` 的 `test:cli:plugins` 纳入 `tests/plugins/**/*.test.ts`。
 
 ### 完成判据
 
@@ -115,14 +115,14 @@ box 插件接入；A/B 两种装配各演示一次；box 会话完整复现。
 
 ### 测试范围（先写）
 
-- `plugins/box/tests/create.test.ts`：模板坐标/默认 fill/子部件 id/消息/`in`/嵌套。
-- `plugins/box/tests/operations.test.ts`：move/scale（含嵌套）、delete、group、ungroup
+- `tests/plugins/box/create.test.ts`：模板坐标/默认 fill/子部件 id/消息/`in`/嵌套。
+- `tests/plugins/box/operations.test.ts`：move/scale（含嵌套）、delete、group、ungroup
   拒绝、set fill/label、undo/redo、多部件一个记录。
-- `plugins/box/tests/structure.test.ts`：必要部件删除/移走拒绝、整体删除允许、额外
+- `tests/plugins/box/structure.test.ts`：必要部件删除/移走拒绝、整体删除允许、额外
   子节点允许、嵌套 box、重排。
-- `plugins/box/tests/readback.test.ts`：data-kind 往返、未装插件降级、缺件/类型错误
+- `tests/plugins/box/readback.test.ts`：data-kind 往返、未装插件降级、缺件/类型错误
   拒绝整个 read、重复 id 拒绝、g style 往返。
-- `plugins/box/tests/messages.test.ts`：create/move/set/undo 文案。
+- `tests/plugins/box/messages.test.ts`：create/move/set/undo 文案。
 - `tests/acceptance/box.test.ts`：Phase 1 §6.1 版本 B 会话逐字节复现。
 - `tests/acceptance/ab-consistency.test.ts` 扩展 box 会话。
 - 零内核差异检查。
@@ -147,9 +147,9 @@ box 插件接入；A/B 两种装配各演示一次；box 会话完整复现。
 
 ### 测试范围（先写）
 
-- `plugins/tree-star/tests/state.test.ts`：编辑→保存→再编辑→undo 各分支、新建、删除、
+- `tests/plugins/tree-star/state.test.ts`：编辑→保存→再编辑→undo 各分支、新建、删除、
   祖先/根、save/read 失败保留、init/resize。
-- `plugins/box/tests/decorator.test.ts`：`(box)` 只按 kind；与 `*` 并存两种顺序。
+- `tests/plugins/box/decorator.test.ts`：`(box)` 只按 kind；与 `*` 并存两种顺序。
 - `tests/application/tree/TreeRenderer.test.ts`：无标签基线、两个标签顺序/空格。
 - `tests/acceptance/tags.test.ts`：CLI 中两标签并存；禁用时基线不变。
 - A/B 一致性与零内核差异。
